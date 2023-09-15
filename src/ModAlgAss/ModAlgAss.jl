@@ -71,6 +71,40 @@ add_assertion_scope(:ModLattice)
   end
 end
 
+struct ModAlgAssElem{P, T}
+  parent::P
+  coordinates::Vector{T}
+end
+
+parent(x::ModAlgAssElem) = x.parent
+
+function (V::ModAlgAss)(x::Vector)
+  if parent(x[1]) === V.base_ring
+    return ModAlgAssElem(V, x)
+  else
+    return ModAlgAssElem(V, convert(Vector{elem_type(V.base_ring)}, map(V.base_ring, x)))
+  end
+end
+
+coordinates(x::ModAlgAssElem) = x.coordinates
+
+function Base.:(+)(x::ModAlgAssElem, y::ModAlgAssElem)
+  return parent(x)(coordinates(x) + coordinates(y))
+end
+
+function Base.:(*)(x::ModAlgAssElem, y::AbsAlgAssElem)
+  @assert parent(y) === parent(x).algebra
+  return parent(x)(coordinates(x) * action(parent(x), y))
+end
+
+function Base.:(*)(x::FieldElem, y::ModAlgAssElem)
+  return parent(y)(x * coordinates(y))
+end
+
+function Base.:(==)(x::ModAlgAssElem{P, T}, y::ModAlgAssElem{P, T}) where {P, T}
+  return parent(x) === parent(y) && coordinates(x) == coordinates(y)
+end
+
 function Base.show(io::IO, V::ModAlgAss)
   print(io, "Amodule over field of dimension ", V.dim)
   if has_algebra(V)
@@ -352,4 +386,100 @@ function regular_module(A::AbsAlgAss)
   M.isfree = 1
   M.free_rank = 1
   return M
+end
+
+################################################################################
+#
+#  Galois module
+#
+################################################################################
+
+# Type to represent a Q[Gal(K)]-linear map K -> V
+mutable struct NfToModAlgAssMor{S, T, U} <: Map{AnticNumberField, ModAlgAss{S, T, U}, HeckeMap, NfToModAlgAssMor}
+  K::AnticNumberField
+  mG::GrpGenToNfMorSet{NfToNfMor, AnticNumberField}
+  V::ModAlgAss{S, T, U}
+  M::QQMatrix
+  Minv::QQMatrix
+
+  function NfToModAlgAssMor{S, T, U}() where {S, T, U}
+    return new{S, T, U}()
+  end
+end
+
+function show(io::IO, f::NfToModAlgAssMor)
+  print(io, "Galois module map from\n")
+  print(io, f.K)
+  print(io, "\nto\n")
+  print(io, f.V)
+end
+
+function (f::NfToModAlgAssMor)(O::Union{NfAbsOrd, NfAbsOrdIdl})
+  V = codomain(f)
+  B = basis(O)
+  G = group(A)
+  ZG = Order(A, collect(G))
+  return ideal_from_lattice_gens(A, ZG, [f(elem_in_nf(b)) for b in B], :right)
+end
+
+automorphism_map(f::NfToModAlgAssMor) = f.mG
+
+function galois_module(K::AnticNumberField, aut::Map = automorphism_group(K)[2]; normal_basis_generator = normal_basis(K))
+  G = domain(aut)
+  A = FlintQQ[G]
+  return _galois_module(K, A, aut, normal_basis_generator = normal_basis_generator)
+end
+
+function _galois_module(K::AnticNumberField, A, aut::Map = automorphism_group(K)[2]; normal_basis_generator = normal_basis(K))
+  G = domain(aut)
+  alpha = normal_basis_generator
+
+  basis_alpha = Vector{elem_type(K)}(undef, dim(A))
+  for (i, g) in enumerate(G)
+    f = aut(g)
+    basis_alpha[A.group_to_base[g]] = f(alpha)
+  end
+
+  M = zero_matrix(base_field(K), degree(K), degree(K))
+  for i = 1:degree(K)
+    a = basis_alpha[i]
+    for j = 1:degree(K)
+      M[i, j] = coeff(a, j - 1)
+    end
+  end
+
+  invM = inv(M)
+
+  z = NfToModAlgAssMor{QQField, QQMatrix, typeof(A)}()
+  V = regular_module(A)
+  z.K = K
+  z.mG = aut
+  z.V = V
+  z.M = M
+  z.Minv = invM
+
+  return V, z
+end
+
+domain(f::NfToModAlgAssMor) = f.K
+
+codomain(f::NfToModAlgAssMor) = f.V
+
+function image(f::NfToModAlgAssMor, x::nf_elem)
+  K = domain(f)
+  @assert parent(x) === K
+  V = codomain(f)
+
+  t = zero_matrix(base_field(K), 1, degree(K))
+  for i = 1:degree(K)
+    t[1, i] = coeff(x, i - 1)
+  end
+  y = t*f.Minv
+  return V([ y[1, i] for i = 1:degree(K) ])
+end
+
+function preimage(f::NfToModAlgAssMor, x::ModAlgAssElem)
+  K = domain(f)
+  y = coordinates(x)*f.M
+  return K(y)
 end
