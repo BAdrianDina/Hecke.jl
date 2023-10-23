@@ -448,9 +448,414 @@ function order_via_bsgs(E::EllCrv{T}) where T<:FinFieldElem
   return output
 end
 
+
+################################################################################
+#	Point counting via Shoof-Elkies-Atkin's algorithm; this implementation is 
+#	based on Chapter VII in Elliptic Curves in Cryptography (ECC) by 
+#	Blake-Seroussi-Smart.
+#   
+################################################################################
+
+################################################################################
+#	Exammple:
+#   F = GF(131)
+#	E = EllipticCurve(F, [1,23])
+#  	phi_l = classical_modular_polynomial(5)	
+#	evaluete_classical_modular_polynomial_at_j_invariant(phi_l, j_invariant(E))
+################################################################################
+@doc raw"""
+	evaluate_classical_modular_polynomial_at_j_invariant(phi_l::Poly) -> Poly
+
+This algorithm is computing the value of the classical modular polynomial at the 
+point P = (x, j), where j is the j-invariant of an elliptic curve defined over Fq. 
+Function returns a polynomial in Fq[x]. 
+"""
+function evaluate_classical_modular_polynomial_at_j_invariant(phil, j)
+	#where T<: Integer
+	# TODO: I am not sure yet, it PolyElem is the correct data type; this needs to be checked! And to check which data type is phil.
+	# how do I define j to be of type field element?
+	# this function should be only for internal usage.
+	
+	R = parent(j)
+	RR, (x, y) = polynomial_ring( R, ["x","y"] )
+	philFq = change_base_ring( RR, phil )
+	
+	# evaluate phi_lFq on x and on the j-invariant of E. 
+	philFqj = philFq(x, j)
+	
+	# in order to change phi_lFqj to a polynomial in Fq[x], we
+	# need to do a hack because I do not know yet a better solution. 
+	# we need to change it later to something more smart; 
+	Rx, x = polynomial_ring(R, "x")
+	coeffs = collect(coefficients(philFqj))
+	expons = collect(exponent_vectors(philFqj))
+	expons = [ t[1] for t in expons ]
+	philFqj = sum( [ coeffs[i]*x^(expons[i]) for i in length(coeffs):-1:1 ] )
+	
+return philFq, philFqj	
+end
+
+
+@doc raw"""
+	partial_derivatives_classical_modular_polynomial(phi_l::Poly) -> Poly, Poly
+
+This algorithm is computing the partial derivatives of the classical modular 
+polynomial. 
+"""
+################################################################################
+#	Exammple:
+#   @time phil = classical_modular_polynomial(5)
+#	@time Hecke.partial_derivative_classical_modular_polynomial(phil)
+################################################################################
+function partial_derivative_classical_modular_polynomial(phil) 
+	#where T<: Integer
+	# TODO: I am not sure yet, it PolyElem is the correct data type; this needs to be checked! 
+	
+	# TODO: We need some general checks before beginning:
+	# ...
+	
+	R = parent(phil)
+	x = R[1]
+	y = R[2]
+	
+	coeffs = collect(coefficients(phil))
+	expons = collect(exponent_vectors(phil))
+	expons_x = [ tup[1] for tup in expons ]
+	expons_y = [ tup[2] for tup in expons ]
+	
+	#compute partial derivatives;
+	expons_xx = map(x -> x > 0 ? x - 1 : x, expons_x)
+	expons_yy = map(y -> y > 0 ? y - 1 : y, expons_y)
+	
+	
+	# check if the computation is correct; 
+	if length(expons_x) != length(expons_xx)
+		error("exponent array of fx anf (fx)' need to have the same length")
+	end
+	
+	if length(expons_y) != length(expons_yy)
+		error("exponent array of fy anf (fy)' need to have the same length")
+	end
+	
+	for i in 1:length(expons_x)
+		t = expons_x[i]
+		tx = expons_xx[i]
+		tup = tuple(t, tx)
+		
+		# correct are (t, tx) = (0, 0), (t, tx) = (1, 0), which  
+		# is a special case of (t, tx) = (x^r, r*x^{r-1}).
+		if !( ( tup == (0, 0) ) | ( tup == (1, 0) ) | ( tup == (t, t - 1) ) )
+			error("wrong partial derivative computation")
+		end 		
+	end
+	
+	expons_xx_y = [ [ expons_xx[i], expons_y[i] ] for i in 1:length(expons) ]
+	expons_x_yy = [ [ expons_x[i], expons_yy[i] ] for i in 1:length(expons) ]
+	
+	# construct partial derivatives;
+	philx = sum( [ coeffs[i]*expons_x[i]*x^(expons_xx_y[i][1])*y^(expons_xx_y[i][2]) for i in 1:length(coeffs) ] )
+	phily = sum( [ coeffs[i]*expons_y[i]*x^(expons_x_yy[i][1])*y^(expons_x_yy[i][2]) for i in 1:length(coeffs) ] )
+	
+	
+	# TODO: we need here some checks that we do not return the 0-function;
+	
+	
+	return philx, phily 	
+end
+
+
+@doc raw"""
+	ElkiesProcedure(l::Int, E::EllCrv{T}, irred_facts_of_phil::Vector{Any}) where T<:FinFieldElem
+
+
+This algorithm is [Algorithm 7.3, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
+"""
+################################################################################
+#	Exammple:
+#	F = GF(131)
+#	E = EllipticCurve(F, [1,23])
+#	@time Hecke.ElkiesProcedure(5, E, irred_facts_of_phil)
+################################################################################
+#function ElkiesProcedure(l::Int, E::EllCrv{T}, irred_facts_of_phil::Vector{Any}) where T<:FinFieldElem
+function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
+	
+    R = base_field(E)
+    q = order(R)
+    p = characteristic(R)
+	j = j_invariant(E)
+	
+	# some test before; E needs to be defined over Fp.
+	if order(R) != p 
+		error("Base field in this procedure has to be Fp")
+	end
+	
+	# the classical l.th modular polynomial:
+	phi_l = classical_modular_polynomial(l)	
+	
+	# compute derivatives with results as polynomials in ZZ[x, y]; later
+	# we will convert these polynomials to Fp[x, y]. 
+	phi_lx, phi_ly = partial_derivative_classical_modular_polynomial(phi_l)
+	
+	# phi_lFq in Fp[x, y], phi_lFqj in Fp[x];
+	phi_lFq, phi_lFqj = evaluate_classical_modular_polynomial_at_j_invariant(phi_l, j)
+	
+
+	RR, x = polynomial_ring(R, "x")
+	Frobf = x^p - x
+	
+	# some test
+	if parent(Frobf) != parent(phi_lFqj)
+		error("not same universe for polynomials Frobf and phi_lFqj")
+	end
+	
+	# the first approach uses classical modular polynomials, see chapter 
+	# VII.4.1 in ECC;
+	f_gcd = gcd(Frobf, phi_lFqj)
+	
+	# some tests related to the degree of f_gcd;
+	if degree(f_gcd) != 2
+		error("degree of gcd(x^p - x, phi_lj) is greater then 2")
+	end
+	
+	facts = collect(factor(f_gcd))
+	facts = [ tup[1] for tup in facts ]
+	root_facts = [ roots(f) for f in facts ]
+	root_facts = [ tup[1] for tup in root_facts ]
+	
+	# step 4, algorithm VII.3 in ECC;
+	# for any of the two roots in root_facts, we compute 
+	# Equation VII.17 on page 126 in ECC; the whole procedure
+	# has to be done over Fp; 
+	(j_tilde, j_tilde2) = root_facts
+	
+	# we proceed as on page 125 in ECC; 
+	(a_1, a_2, a_3, a_4, a_6) = a_invars(E)
+	
+	# we construct two to E isogenies curves;
+	E4q_bar = R( - 48 * a_4 )
+	E6q_bar = R( 864 * a_6 )
+	j_prime = R( - E6q_bar * j * E4q_bar^(-1) )
+	
+	
+	# step 5,algorithm VII.3 in ECC; 
+	nom = R(j_prime * phi_lx(j, j_tilde))
+	denom = R(l * phi_ly(j, j_tilde))
+	if denom != R(0)
+		denom_inv = denom^(-1)
+	else
+		error("denominator is zero")
+	end
+	j_t_p = - nom * denom_inv
+	
+	# step 6, algorithm VII.3 in ECC;
+	a_tilde = - j_t_p^2 * (48 * j_tilde * (j_tilde - 1728))^(-1)  
+	b_tilde = - j_t_p^3 * (864 * j_tilde^2 * (j_tilde - 1728))^(-1)	
+	println(a_tilde)
+	println(b_tilde)
+
+	
+	return true
+end
+
+
+@doc raw"""
+	isElkiesPrime(l::Integers) -> Integers
+
+Given an integer l, this function checks if l is an Elkies prime; this test
+is based on the splitting type of the modular polynomial phi_l(x, j(E)) in ZZ[x, y],
+respectively in Fq[x].
+This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
+"""
+function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
+	
+    R = base_field(E)
+    q = order(R)
+    p = characteristic(R)
+	j = j_invariant(E)
+	
+	# some test
+	if is_prime(l) == false
+		error("integer l must be prime")
+	end 
+	
+	if l > 59
+		error("Database only contains classical modular polynomials up to level 59")
+	end 
+	
+	######################
+	# the Atkin modular polynomial has smaller coefficients as the classical modular polynomial. Can we use it???
+	# fMA = atkin_modular_polynomial(l)
+	######################
+	
+	# the classical l.th modular polynomial:
+	phi_l = classical_modular_polynomial(l)	
+	phi_lFq, phi_lFqj = evaluate_classical_modular_polynomial_at_j_invariant(phi_l, j)
+	
+	# decompose the modular polynomial;	
+	prod_irred_fac = collect( factor( phi_lFqj ))
+	irred_facts = []
+	for tup in prod_irred_fac
+		irred_fac = tup[1]
+		append!(irred_facts, [irred_fac] )
+		
+		exp = tup[2]
+		if exp > 1
+			append!(irred_facts, [irred_fac for k in 1:(exp - 1) ] )
+		end
+	end
+	
+	# some further test on irreducibility;
+	if sum([ true & is_irreducible(f) for f in irred_facts ]) != length(irred_facts)
+		error("not all factors of the l-th. mod. polynomial are irreducible")
+	end
+	
+	
+	# TODO: Maybe we can get the degree immediately from the variable prod_irred_fac above; the degree of the polynomial is deg_f = length(collect(coeffs(f))) - 1 for f in prod_irred_fac;
+	deg_irred_facts = [ degree(f) for f in irred_facts ]
+	
+	
+	# check [Proposition VII.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]
+	# l is an Elkies prime iff; 
+	# I.1 deg_irred_facts = [1, l], up to permutation, or 
+	# I.2 deg_irred_facts = [1, 1, ..., 1], or 
+	# II. deg_irred_facts = [1, 1, r, ..., r] and r|l-1.
+	# if deg_irred_facts = [r, r, ..., r], then l is an Atkin prime.
+	
+	if ( length(deg_irred_facts) == 2 ) & ( sum(deg_irred_facts) == l+1 ) # case I.1;
+		return true, irred_facts
+	elseif sum(deg_irred_facts) == length(deg_irred_facts) # case I.2;	
+		return true, irred_facts
+	elseif 	( count(g -> g == 1, deg_irred_facts) == 2 ) & 
+			( count(g -> g > 1, deg_irred_facts) == (length(deg_irred_facts) - 2 )) # case II;
+		return true, irred_facts  
+	end
+
+return false, nothing
+end
+
+
+
+
+################################################################################
+#
+#  SEA algorithm
+#  Author: Bogdan Adrain Dina
+#  Notes by Bogdan Adrian Dina based on the books Elliptic and Hyperelliptic 
+#  Curve Cryptography (EHCC) by H. Cohen and G. Frey.
+#  
+#  Content: 1. Elkies primes; ...
+# 
+#  2. l-th modular polynomial Phi_l( X, Y ); there are two main problems
+#  related to the computation of Phi_l( X, Y ): the size of their coefficients increases badly as increases and their degree in Y is too high. 
+#  From [page 418, EHCC] we have that 
+#  Phi_l(X, j(tau)) = (X - j(l*tau))* prod_{i=0}^{l - 1} (X - j( -l/ (tau + i) ) ), where tau is an element in the upper half-plane. The main disadvantage of this polynomial is its huge coefficients. Instead we use the following
+# 
+#  3. canonical modular polynomials Phi^c_l( X, j(tau) ) = (X - f_l(tau))* prod_{i=0}^{l - 1} (X - f_l(-1/tau + i)), where 
+#  f_l(tau) is given by a power series expansion of the form as in [page 418, EHCC].
+#
+#  4. Computing separable isogenies in finite fields of large characteristic: 
+#  assume l is an Elkies prime. Then, by [Thm. 17.12, EHCC] implies that there exists a subgroup C subset E[l] of order l which is an eigenspace of the Frobenius endomorphism Phi_p. Furthermore, there exists an isogenous elliptic curve E' = E/C and a separable isogeny of degree l between E and E'.
+#  
+#
+# 
+#
+# 
+#
+# 
+#
+# Algorithm:
+# INPUT: An ordinary elliptic curve E over Fq
+# OUTPUT: The number of points #E(Fq)
+# Init step: M = 1, l = 2, A = [], EE = [], j = j(E) 
+# 1.  while M < 4*sqrt(q) do: 	
+# 2.  	if l is Elkies prime then do: // test if l is Atkin or Elkies prime.
+# 3.		determine polynomial Fl(x) := prod_{±Pi in C\{0}} ( x - (Pi)_x )
+#			of degree (l-1)/2.
+# 4.		Find eigenvalue lambda mod l. then
+# 5.		t := lambda + q/lambda (mod l)
+# 6. 		Append(EE, [t, l])
+# 7.	else (l is Atkin prime) do:
+# 8.		determine a small set T s.t. t (mod l) in T. // what is T exactly?
+# 9.		Append(A, [T, l]) 
+# 10.	M = M * l
+# 11.	l = NextPrime(l)
+# 12. Recover t using the set A and EE, the CRT and BSGS.
+# 13. Retrun q + 1 - t.
+#
+# Example: 	F = GF(5) 
+# 			E = EllipticCurve(F, [1,1,1,0,1])  
+# 			@btime Hecke.order_via_SEA(E)
+#
+#   
+################################################################################
+@doc raw"""
+    order_via_SEA(E::EllCrv) -> ZZRingElem
+
+Given an elliptic curve $E$ over a finite field $\mathbf F$,
+this function computes the order of $E(\mathbf F)$ using Schoof's-Elkies's-Atkin's  
+algorithm. (The characteristic must not be $2$ or $3$.)
+"""
+function order_via_SEA(E::EllCrv{T}) where T<:FinFieldElem
+    R = base_field(E)
+    q = order(R)
+    p = characteristic(R)
+
+	# some test:
+	if (p == 0)
+		error("Characteristic must not be 0")
+	end
+    if (p == 2) || (p == 3) 
+	  error("Characteristic 2,3 not implemented yet")
+    end
+	
+    if E.short == false
+      E = short_weierstrass_model(E)[1]
+    end
+	
+	
+	# main procedure:
+	M = 1 
+	l = 3 # TODO: the case l = 2 we will treat separately
+	A = []
+	EE = []
+	#j = j_invariant(E) 
+	M_max = 4*isqrt(q)
+	
+	while M < M_max
+		
+		
+		if l == p
+			continue
+		end
+		
+		test, irred_facts_of_phil = isElkiesPrime(l, E)
+		
+		if test == true
+			Flx = ElkiesProcedure(E, l, irred_facts_of_phil)	
+		else
+			println("not implemented yet.")
+			#Tl = AtkinProcedure(E, l)
+			#append!(A, Tl)
+		end
+		
+		# this is only for debugging steps:
+		break
+	end 
+	
+	return 1	
+end 
+
+
 ################################################################################
 #
 #  Schoof's algorithm
+#  Notes by Bogdan Adrian Dina; these notes are based on the books Elliptic and 
+#  Hyperelliptic Curve Cryptography by H. Cohen and G. Frey and The Arithmetic
+#  of Elliptic Curves by J.H. Silverman
+#  Recall that |E(Fp)| = p + 1 − t with t the trace of the  Frobenius endomorphism phi_p and by Hasse’s Theorem, we have |t| \leq 2*p^(1/2). 
+#  The main idea of Schoof’s algorithm is: 
+#  1. compute t modulo small primes ell_1,..., ell_r s.t. prod_{i = 1}^r ell_i \leq 4*p^(1/2).
+#  2. The trace t can be determined using the Chinese remainder theorem. 
 #
 ################################################################################
 
