@@ -73,12 +73,12 @@
 end
 
 @testset "roots" begin
-  o = CyclotomicField(2)[1](1)
+  o = cyclotomic_field(2)[1](1)
   @test issetequal(roots(o, 2), [o, -o])
-  o = CyclotomicField(1)[1](1)
+  o = cyclotomic_field(1)[1](1)
   @test issetequal(roots(o, 2), [o, -o])
 
-  o, a = CyclotomicField(4)
+  o, a = cyclotomic_field(4)
   _, x = o["x"]
   @test length(roots(x^2-a^2//4)) == 2
 
@@ -116,7 +116,7 @@ end
   @test @inferred is_squarefree(x * (x + 1))
   @test @inferred !is_squarefree(x * (x + 1)^2)
 
-  F, a = RationalFunctionField(GF(3), "a")
+  F, a = rational_function_field(GF(3), "a")
   Fx, x = F["x"]
   @test @inferred is_squarefree(x)
   @test @inferred is_squarefree(2*x^0)
@@ -130,7 +130,7 @@ end
 @testset "Cyclotomic polynomials" begin
   listp = Hecke.primes_up_to(50)
   for i in 1:20
-    Fp, _ = FiniteField(rand(listp), cached=false)
+    Fp, _ = finite_field(rand(listp), cached=false)
     Fpt, _ = polynomial_ring(Fp, "t", cached=false)
     chi = @inferred cyclotomic_polynomial(rand(1:100), Fpt)
     @test is_cyclotomic_polynomial(chi)

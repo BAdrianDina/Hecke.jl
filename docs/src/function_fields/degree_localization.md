@@ -13,7 +13,7 @@ Given $k(x)$ a (univariate) rational function field, there are two rings of inte
 both of which are Euclidean:
 
 * $k[x]$
-* $k_\infty(x) = \{a/b | a, b \in k[x] \;\;\mbox{where}\;\; \deg(a) \leq \deg(b)\}
+* $k_\infty(x) = \{a/b | a, b \in k[x] \;\;\mbox{where}\;\; \deg(a) \leq \deg(b)\}$
 
 The second of these rings is the localization of $k[1/x]$ at $(1/x)$ inside the rational
 function field $k(x)$, i.e. the localization of the function field at the point at
@@ -36,7 +36,7 @@ localization(K::Generic.RationalFunctionField{T}, ::typeof(degree)) where T <: F
 
 ```@repl
 using Hecke # hide
-K, x = RationalFunctionField(FlintQQ, "x");
+K, x = rational_function_field(FlintQQ, "x");
 R = localization(K, degree)
 ```
 
@@ -51,7 +51,7 @@ the degree localization
 
 ```@repl
 using Hecke # hide
-K, x = RationalFunctionField(FlintQQ, "x");
+K, x = rational_function_field(FlintQQ, "x");
 R = localization(K, degree)
 
 a = R()

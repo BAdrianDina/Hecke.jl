@@ -1343,7 +1343,7 @@ function _fac_and_lift(f::QQMPolyRingElem, p, degree_limit, lower_limit)
   return lifted_fac
 end
 
-function is_pairwise_coprime(A::Vector{T}) where {T <: PolyElem}
+function is_pairwise_coprime(A::Vector{T}) where {T <: PolyRingElem}
   return is_squarefree(prod(A))
 end
 
@@ -1395,7 +1395,7 @@ function prime_dec_nonindex(O::NfAbsOrd{NfAbsNS,NfAbsNSElem}, p::IntegerUnion, d
     =#
     for x = Base.Iterators.product(fac...)
       k = lcm([degree(t[1]) for t = x])
-      Fq = Native.FiniteField(p, k, "y", cached = false)[1]
+      Fq = Native.finite_field(p, k, "y", cached = false)[1]
       Fq2 = residue_ring(Rx, lift(Zx, minpoly(gen(Fq))))
       rt = Vector{Vector{elem_type(Fq)}}()
       RT = []

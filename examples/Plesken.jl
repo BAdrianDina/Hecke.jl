@@ -36,7 +36,7 @@ function steinitz(a::ResElem{ZZRingElem})
   return lift(a)
 end
 
-function steinitz(a::ResElem{T}) where T <: Union{zzModPolyRingElem, fqPolyRepPolyRingElem, PolyElem}
+function steinitz(a::ResElem{T}) where T <: Union{zzModPolyRingElem, fqPolyRepPolyRingElem, PolyRingElem}
   f = [steinitz(coeff(a.data, i))::ZZRingElem for i=0:degree(a.data)]
   ZZx = polynomial_ring(FlintZZ)[1]
   S = base_ring(base_ring(parent(a)))
@@ -83,7 +83,7 @@ function minpoly_aut(a::ResElem{T}, aut :: Function) where T <: Union{fqPolyRepP
   return f
 end
 
-function minpoly_aut(a::ResElem{T}, aut :: Function) where T <: PolyElem
+function minpoly_aut(a::ResElem{T}, aut :: Function) where T <: PolyRingElem
   R = parent(a)
   RX, X = polynomial_ring(R)
   o = Set{typeof(X)}()
@@ -97,7 +97,7 @@ function minpoly_aut(a::ResElem{T}, aut :: Function) where T <: PolyElem
   return f
 end
 
-function minpoly_pow(a::ResElem{T}, deg::Int) where T <: Union{PolyElem, fqPolyRepPolyRingElem}
+function minpoly_pow(a::ResElem{T}, deg::Int) where T <: Union{PolyRingElem, fqPolyRepPolyRingElem}
   R = parent(a)
   S = base_ring(base_ring(R))
   M = matrix_space(S, deg, degree(R.modulus))()
@@ -214,7 +214,7 @@ function plesken_kummer(p::ZZRingElem, r::Int, s::Int)
 
 
   if (p-1) % r == 0
-    R = FiniteField(p)
+    R = finite_field(p)
     descent = false
   else
     f = cyclotomic(r, polynomial_ring(FlintZZ)[2])
@@ -283,7 +283,7 @@ end
 
 function plesken_as(p::ZZRingElem, r::Int, s::Int)
   @assert p==r
-  R = FiniteField(p)
+  R = finite_field(p)
   g = R(-1)
   t = 1
   while s>1
@@ -300,12 +300,12 @@ function plesken_2(p::ZZRingElem, r::Int, s::Int)
   @assert r==2
   #Plesken, 1.27
   if valuation(p-1, 2) >1
-    R = FiniteField(p)
+    R = finite_field(p)
     g = primitive_root_r_div_qm1(p, r)
     t = 1
   else
     @assert valuation(p+1, 2)>1
-    R = FiniteField(p)
+    R = finite_field(p)
     Rx,x = polynomial_ring(R, "t_1")
     R = residue_ring(Rx, x^2+1)
     g = primitive_root_r_div_qm1(R, 2)

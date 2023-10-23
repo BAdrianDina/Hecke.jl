@@ -65,7 +65,7 @@ isfinite(K::LocalField) = isfinite(base_field(K))
 #
 ################################################################################
 
-function is_eisenstein_polynomial(f::PolyElem{S}) where S <: Union{padic, qadic, LocalFieldElem}
+function is_eisenstein_polynomial(f::PolyRingElem{S}) where S <: Union{padic, qadic, LocalFieldElem}
   if !iszero(valuation(leading_coefficient(f)))
     return false
   end
@@ -98,7 +98,7 @@ function is_eisenstein_polynomial(f::T, p::S) where {T <: Union{QQPolyRingElem, 
   return true
 end
 
-function is_eisenstein_polynomial(f::PolyElem{<:NumFieldElem}, p::NumFieldOrdIdl)
+function is_eisenstein_polynomial(f::PolyRingElem{<:NumFieldElem}, p::NumFieldOrdIdl)
   @assert is_prime(p)
   if !iszero(valuation(leading_coefficient(f), p))
     return false
@@ -115,7 +115,7 @@ function is_eisenstein_polynomial(f::PolyElem{<:NumFieldElem}, p::NumFieldOrdIdl
   return true
 end
 
-function _generates_unramified_extension(f::PolyElem{S}) where S <: Union{padic, qadic, LocalFieldElem}
+function _generates_unramified_extension(f::PolyRingElem{S}) where S <: Union{padic, qadic, LocalFieldElem}
   K = base_ring(f)
   F, mF = residue_field(K)
   g = map_coefficients(mF, f)
@@ -465,7 +465,7 @@ function residue_field(K::LocalField{S, UnramifiedLocalField}) where {S <: Field
    Fpt = polynomial_ring(ks, cached = false)[1]
    g = defining_polynomial(K)
    f = Fpt([ks(mks(coeff(g, i))) for i=0:degree(K)])
-   kk = Native.FiniteField(f)[1]
+   kk = Native.finite_field(f)[1]
    bas = basis(K)
    u = gen(kk)
    function proj(a::Hecke.LocalFieldElem)

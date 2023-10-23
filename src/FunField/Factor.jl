@@ -1,7 +1,7 @@
 module FactorFF
 using Hecke
 
-function Hecke.norm(f::PolyElem{<: Generic.FunctionFieldElem})
+function Hecke.norm(f::PolyRingElem{<: Generic.FunctionFieldElem})
     K = base_ring(f)
     P = polynomial_to_power_sums(f, degree(f)*degree(K))
     PQ = elem_type(base_field(K))[tr(x) for x in P]
@@ -34,7 +34,7 @@ function to_mpoly(f::Generic.Poly{<:Generic.RationalFunctionFieldElem})
   end
   return finish(Fc)
 end
- 
+
 function Hecke.factor(f::Generic.Poly{<:Generic.RationalFunctionFieldElem})
   Pf = parent(f)
   lf = factor(to_mpoly(f))
@@ -44,7 +44,7 @@ function Hecke.factor(f::Generic.Poly{<:Generic.RationalFunctionFieldElem})
   @assert iszero(f) || sum(degree(x)*y for (x,y) = fa; init = 0) == degree(f)
   return fa
 end
- 
+
 function Hecke.factor_absolute(f::Generic.Poly{<:Generic.RationalFunctionFieldElem})
   Pf = parent(f)
   lf = factor_absolute(to_mpoly(f))
@@ -54,8 +54,8 @@ function Hecke.factor_absolute(f::Generic.Poly{<:Generic.RationalFunctionFieldEl
     g = gh[1]
     h = gh[2]
     k = base_ring(g)
-    kt, t = RationalFunctionField(k, base_ring(Pf).S, cached = false)
-    ktx, x = PolynomialRing(kt, symbols(Pf)[1], cached = false)
+    kt, t = rational_function_field(k, base_ring(Pf).S, cached = false)
+    ktx, x = polynomial_ring(kt, symbols(Pf)[1], cached = false)
     push!(la, [from_mpoly(g, ktx), from_mpoly(h, ktx)]=>v)
   end
   return la
@@ -121,7 +121,7 @@ function Hecke.splitting_field(f::Generic.Poly{<:Generic.RationalFunctionFieldEl
   end
 
   while true
-    G, b = FunctionField(lf[1], "b", cached = false)
+    G, b = function_field(lf[1], "b", cached = false)
     if length(lf) == 1 && degree(G) < 3
       return G
     end

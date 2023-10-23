@@ -335,7 +335,7 @@ function Nemo.residue_field(a::HessQR, b::HessQRElem)
   @assert parent(b) == a
   @assert is_prime(b.c)
   F = GF(b.c)
-  Ft, t = RationalFunctionField(F, String(var(a.R)), cached = false)
+  Ft, t = rational_function_field(F, String(var(a.R)), cached = false)
   R = parent(numerator(t))
   return Ft, MapFromFunc(a, Ft,
                          x->F(x.c)*Ft(map_coefficients(F, x.f, parent = R))//Ft(map_coefficients(F, x.g, parent = R)),
@@ -352,7 +352,7 @@ function Nemo.residue_ring(a::HessQR, b::HessQRElem)
      y->HessQRElem(a, ZZRingElem(1), lift(parent(b.f), numerator(y, false)), lift(parent(b.f), denominator(y, false))))
 end
 
-function +(a::FracElem{T}, b::FracElem{T}) where T <: PolyElem{<:ResElem{S}} where S <: Hecke.IntegerUnion
+function +(a::FracElem{T}, b::FracElem{T}) where T <: PolyRingElem{<:ResElem{S}} where S <: Hecke.IntegerUnion
   na = numerator(a, false)
   da = denominator(a, false)
 
@@ -365,7 +365,7 @@ function +(a::FracElem{T}, b::FracElem{T}) where T <: PolyElem{<:ResElem{S}} whe
   return parent(a)(da, db)
 end
 
-function -(a::FracElem{T}, b::FracElem{T}) where T <: PolyElem{<:ResElem{S}} where S <: Hecke.IntegerUnion
+function -(a::FracElem{T}, b::FracElem{T}) where T <: PolyRingElem{<:ResElem{S}} where S <: Hecke.IntegerUnion
   na = numerator(a, false)
   da = denominator(a, false)
 
@@ -378,7 +378,7 @@ function -(a::FracElem{T}, b::FracElem{T}) where T <: PolyElem{<:ResElem{S}} whe
   return parent(a)(da, db)
 end
 
-function *(a::FracElem{T}, b::FracElem{T}) where T <: PolyElem{<:ResElem{S}} where S <: Hecke.IntegerUnion
+function *(a::FracElem{T}, b::FracElem{T}) where T <: PolyRingElem{<:ResElem{S}} where S <: Hecke.IntegerUnion
   na = numerator(a, false)
   da = denominator(a, false)
 

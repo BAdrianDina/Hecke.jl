@@ -72,20 +72,12 @@ function hnf_modular(M::MatElem{T}, d::T, is_prime::Bool = false) where {T}
   return H[1:ncols(M), :]
 end
 
-function function_field(f::PolyElem{<:Generic.RationalFunctionFieldElem}, s::String = "_a"; check::Bool = true, cached::Bool = false)
-  return FunctionField(f, s, cached = cached)
+function function_field(f::PolyRingElem{<:Generic.RationalFunctionFieldElem}, s::VarName = :_a; check::Bool = true, cached::Bool = false)
+  return function_field(f, s, cached = cached)
 end
 
-function function_field(f::PolyElem{<:Generic.RationalFunctionFieldElem}, s::Symbol; check::Bool = true, cached::Bool = false)
-  return FunctionField(f, s, cached = cached)
-end
-
-function extension_field(f::PolyElem{<:Generic.RationalFunctionFieldElem}, s::String = "_a"; check::Bool = true, cached::Bool = false)
-  return FunctionField(f, s, cached = cached)
-end
-
-function extension_field(f::PolyElem{<:Generic.RationalFunctionFieldElem}, s::Symbol; check::Bool = true, cached::Bool = false)
-  return FunctionField(f, s, cached = cached)
+function extension_field(f::PolyRingElem{<:Generic.RationalFunctionFieldElem}, s::VarName = :_a; check::Bool = true, cached::Bool = false)
+  return function_field(f, s, cached = cached)
 end
 
 function Hecke.basis(F::Generic.FunctionField)
@@ -102,13 +94,13 @@ function Hecke.residue_field(R::QQPolyRing, p::QQPolyRingElem)
   return K, MapFromFunc(R, K, x -> K(x), y -> R(y))
 end
 
-function Hecke.residue_field(R::PolyRing{T}, p::PolyElem{T}) where {T <: NumFieldElem}
+function Hecke.residue_field(R::PolyRing{T}, p::PolyRingElem{T}) where {T <: NumFieldElem}
   @assert parent(p) === R
   K, _ = number_field(p)
   return K, MapFromFunc(R, K, x -> K(x), y -> R(y))
 end
 
-function (F::Generic.FunctionField{T})(p::PolyElem{<:AbstractAlgebra.Generic.RationalFunctionFieldElem{T}}) where {T <: FieldElem}
+function (F::Generic.FunctionField{T})(p::PolyRingElem{<:AbstractAlgebra.Generic.RationalFunctionFieldElem{T}}) where {T <: FieldElem}
   @assert parent(p) == parent(F.pol)
   @assert degree(p) < degree(F) # the reduction is not implemented
   R = parent(gen(F).num)
@@ -282,8 +274,4 @@ function Hecke.lcm(a::Vector{<:RingElem})
     error("don't know the ring")
   end
   return reduce(lcm, a)
-end
-
-function rational_function_field(k::Field, s::VarName = :t)
-  return RationalFunctionField(k, s)
 end
