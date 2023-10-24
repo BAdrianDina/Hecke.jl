@@ -574,7 +574,7 @@ This algorithm is [Algorithm 7.3, Elliptic Curves in Cryptography, Blake-Serouss
 #	Exammple:
 #	F = GF(131)
 #	E = EllipticCurve(F, [1,23])
-#	@time Hecke.ElkiesProcedure(5, E, irred_facts_of_phil)
+#	@time Hecke.ElkiesProcedure(5, E)
 ################################################################################
 #function ElkiesProcedure(l::Int, E::EllCrv{T}, irred_facts_of_phil::Vector{Any}) where T<:FinFieldElem
 function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
@@ -584,6 +584,8 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
     p = characteristic(R)
 	j = j_invariant(E)
 	
+	
+	
 	# some test before; E needs to be defined over Fp.
 	if order(R) != p 
 		error("Base field in this procedure has to be Fp")
@@ -592,11 +594,28 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	# the classical l.th modular polynomial:
 	phi_l = classical_modular_polynomial(l)	
 	
-	# compute derivatives with results as polynomials in ZZ[x, y]; later
-	# we will convert these polynomials to Fp[x, y]. 
+	# compute derivatives with results as polynomials in ZZ[x, y]; 
+	# later, we will convert these polynomials to Fp[x, y]. 
 	phi_lx, phi_ly = partial_derivative_classical_modular_polynomial(phi_l)
+	phi_lxx, phi_lxy = partial_derivative_classical_modular_polynomial(phi_lx)
+	phi_lyx, phi_lyy = partial_derivative_classical_modular_polynomial(phi_ly)
 	
-	# phi_lFq in Fp[x, y], phi_lFqj in Fp[x];
+	# some tests;
+	if phi_lxy != phi_lyx 
+		error("erroneous computation; phi_lxy ≠ phi_lyx")
+	end
+	
+	
+	# from now on all computations are in Fp, see [Chapter VII.4, ECC];
+	# to determine the factor Fl(x), of degree d = (l-1)/2, we proceed as follows:
+	# 1. given E over Fp, j = j(E), determine a j-invariant j_tilde of an isogenous curve, by determining a root of the modular polynomial   phil(x, j), in other words phil(j_tilde, j) = 0.
+	# 2. given j_tilde, determine coefficients a_tilde, b_tilde in Fp of an isogenous curve E_tilde: Y^2 = x^3 + a_tilde*X + b_tilde,          j_tilde = j(E_tilde).
+	# 3. knowing the isogenous curve E_tilde, and the kernel of the isogeny phi: E --> E_tilde, compute the sum of the x-coord. of the points in ker(phi). From (E, E_tilde) and the sum of the x-coord. of the points in ker(phi), determine Fl(x):
+	# our implementation is Algorithm VII.3 in ECC, and by defining steps, we always mean the steps in this algorithm.
+	
+	
+	
+ 	# phi_lFq in Fp[x, y], phi_lFqj in Fp[x];
 	phi_lFq, phi_lFqj = evaluate_classical_modular_polynomial_at_j_invariant(phi_l, j)
 	
 
@@ -622,22 +641,25 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	root_facts = [ roots(f) for f in facts ]
 	root_facts = [ tup[1] for tup in root_facts ]
 	
-	# step 4, algorithm VII.3 in ECC;
+	
+	# step 4;
 	# for any of the two roots in root_facts, we compute 
 	# Equation VII.17 on page 126 in ECC; the whole procedure
 	# has to be done over Fp; 
 	(j_tilde, j_tilde2) = root_facts
 	
-	# we proceed as on page 125 in ECC; 
+	# !!!!!!!!!!!!!! only for test; in order to check the values with the one in the book ECC
+	j_tilde = j_tilde2
+	
 	(a_1, a_2, a_3, a_4, a_6) = a_invars(E)
 	
 	# we construct two to E isogenies curves;
-	E4q_bar = R( - 48 * a_4 )
-	E6q_bar = R( 864 * a_6 )
-	j_prime = R( - E6q_bar * j * E4q_bar^(-1) )
+	E4q_modp = R( - 48 * a_4 )
+	E6q_modp = R( 864 * a_6 )
+	j_prime = R( - E6q_modp * j * E4q_modp^(-1) )
 	
 	
-	# step 5,algorithm VII.3 in ECC; 
+	# step 5; 
 	nom = R(j_prime * phi_lx(j, j_tilde))
 	denom = R(l * phi_ly(j, j_tilde))
 	if denom != R(0)
@@ -647,12 +669,80 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	end
 	j_t_p = - nom * denom_inv
 	
-	# step 6, algorithm VII.3 in ECC;
-	a_tilde = - j_t_p^2 * (48 * j_tilde * (j_tilde - 1728))^(-1)  
-	b_tilde = - j_t_p^3 * (864 * j_tilde^2 * (j_tilde - 1728))^(-1)	
-	println(a_tilde)
-	println(b_tilde)
-
+	# step 6;
+	a_tilde = R(- j_t_p^2 * (48 * j_tilde * (j_tilde - 1728))^(-1))
+	b_tilde = R(- j_t_p^3 * (864 * j_tilde^2 * (j_tilde - 1728))^(-1))	
+	
+	# step 7; 
+	E4ql_modp = R(- 48 * a_tilde)
+	E6ql_modp = R(864 * b_tilde)
+	
+	# step 8;
+	nom = R( j_prime^2 * phi_lxx(j, j_tilde) + 2*l*j_prime*j_t_p*phi_lxy(j, j_tilde) + l^2*j_t_p^2*phi_lyy(j, j_tilde) )
+	denom = R( j_prime * phi_lx(j, j_tilde) ) 
+	if denom != R(0)
+		denom_inv = denom^(-1)
+	else
+		error("denominator is zero")
+	end
+	rat_rep = R( - nom * denom_inv )
+	
+	# step 9;
+	two_R = R(2)
+	three_R = R(3)
+	four_R = R(4)
+	five_R = R(5)
+	seven_R = R(7)
+	
+	p1 = 	R( l*two_R^(-1)*rat_rep ) + 
+			R( l*four_R^(-1)*(E4q_modp^2 * E6q_modp^(-1) - l*E4ql_modp^2 * E6ql_modp^(-1)) ) + 
+			R( l*three_R^(-1)*(E6q_modp * E4q_modp^(-1) - l*E6ql_modp^2 * E4ql_modp^(-1)) )
+	 
+	# d = (l-1)/2 which corresponds to the degree of the  
+	# division polynomial factor Fl(x);
+	#d = ((l-1) * two_R^(-1))
+	d = Int((l-1)//2)
+	
+	
+	# step 10;
+	c1 = R( - a_4 * five_R^(-1) ) 
+	c2 = R( - a_6 * seven_R^(-1) ) 
+	cks = [ c1, c2 ]
+	
+	c1_t = R( - a_tilde * five_R^(-1) )
+	c2_t = R( - b_tilde * seven_R^(-1) )
+	cks_t = [ c1_t, c2_t ]
+	
+	if d >= 3
+		for k in 3:d
+			pre_fact = R(three_R * ( (k - two_R) * (two_R*k + three_R) )^(-1) )
+			
+			ck = R(pre_fact * sum( [ cks[j]*cks[k-1-j] for j in 1:k-2 ] ))
+			append!(cks, [ck])
+			
+			ck_t = R(pre_fact * sum( [ cks_t[j]*cks_t[k-1-j] for j in 1:k-2 ] ) )
+			append!(cks_t, [ck_t])
+		end
+	end
+	
+	println(cks)
+	println(cks_t)
+	
+	# step 11, obtain the coefficients of Fl(x);
+	F_ld = 1
+	F_ld_1 = R( - p1 * two_R^(-1) )
+	F_ld_2 = R( p1^2 * two_R^(-3) 
+				- ((cks_t[1] - l*cks[1])*(three_R * four_R)^(-1)) 
+				- (cks[1]*(l - 1) * two_R^(-1)) )
+	F_ld_3 = R(	- p1^3 * (three_R * two_R^4)^(-1) 
+				- ((cks_t[2] -l*cks[2] ) * (two_R * three_R * five_R)^(-1)) 
+				+ p1 * ( (cks_t[1] - l*cks[1]) * (two_R^3 * three_R)^(-1)) 
+				- cks[2] * (l - 1) * two_R^(-1) 
+				+ cks[1] * p1 * (l - three_R) * (two_R^2)^(-1) )
+	
+	# F_lds = [F_ld_1]			
+	# add recursion formula
+	
 	
 	return true
 end
