@@ -556,9 +556,7 @@ function partial_derivative_classical_modular_polynomial(phil)
 	philx = sum( [ coeffs[i]*expons_x[i]*x^(expons_xx_y[i][1])*y^(expons_xx_y[i][2]) for i in 1:length(coeffs) ] )
 	phily = sum( [ coeffs[i]*expons_y[i]*x^(expons_x_yy[i][1])*y^(expons_x_yy[i][2]) for i in 1:length(coeffs) ] )
 	
-	
 	# TODO: we need here some checks that we do not return the 0-function;
-	
 	
 	return philx, phily 	
 end
@@ -583,8 +581,6 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
     q = order(R)
     p = characteristic(R)
 	j = j_invariant(E)
-	
-	
 	
 	# some test before; E needs to be defined over Fp.
 	if order(R) != p 
@@ -612,7 +608,6 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	# 2. given j_tilde, determine coefficients a_tilde, b_tilde in Fp of an isogenous curve E_tilde: Y^2 = x^3 + a_tilde*X + b_tilde,          j_tilde = j(E_tilde).
 	# 3. knowing the isogenous curve E_tilde, and the kernel of the isogeny phi: E --> E_tilde, compute the sum of the x-coord. of the points in ker(phi). From (E, E_tilde) and the sum of the x-coord. of the points in ker(phi), determine Fl(x):
 	# our implementation is Algorithm VII.3 in ECC, and by defining steps, we always mean the steps in this algorithm.
-	
 	
 	
  	# phi_lFq in Fp[x, y], phi_lFqj in Fp[x];
@@ -646,105 +641,156 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	# for any of the two roots in root_facts, we compute 
 	# Equation VII.17 on page 126 in ECC; the whole procedure
 	# has to be done over Fp; 
-	(j_tilde, j_tilde2) = root_facts
 	
-	# !!!!!!!!!!!!!! only for test; in order to check the values with the one in the book ECC
-	j_tilde = j_tilde2
-	
-	(a_1, a_2, a_3, a_4, a_6) = a_invars(E)
-	
-	# we construct two to E isogenies curves;
-	E4q_modp = R( - 48 * a_4 )
-	E6q_modp = R( 864 * a_6 )
-	j_prime = R( - E6q_modp * j * E4q_modp^(-1) )
+	_, _, _, a_4, a_6 = a_invars(E)
+	F_l = 0
+	for j_tilde in root_facts
+		F_lds = []
+		# we construct two to E isogenies curves;
+		E4q_modp = R( - 48 * a_4 )
+		E6q_modp = R( 864 * a_6 )
+		j_prime = R( - E6q_modp * j * E4q_modp^(-1) )
 	
 	
-	# step 5; 
-	nom = R(j_prime * phi_lx(j, j_tilde))
-	denom = R(l * phi_ly(j, j_tilde))
-	if denom != R(0)
-		denom_inv = denom^(-1)
-	else
-		error("denominator is zero")
-	end
-	j_t_p = - nom * denom_inv
+		# step 5; 
+		nom = R(j_prime * phi_lx(j, j_tilde))
+		denom = R(l * phi_ly(j, j_tilde))
+		if denom != R(0)
+			denom_inv = denom^(-1)
+		else
+			#error("denominator is zero")
+			continue
+		end
+		j_t_p = - nom * denom_inv
 	
-	# step 6;
-	a_tilde = R(- j_t_p^2 * (48 * j_tilde * (j_tilde - 1728))^(-1))
-	b_tilde = R(- j_t_p^3 * (864 * j_tilde^2 * (j_tilde - 1728))^(-1))	
+		# step 6;
+		a_tilde = R(- j_t_p^2 * (48 * j_tilde * (j_tilde - 1728))^(-1))
+		b_tilde = R(- j_t_p^3 * (864 * j_tilde^2 * (j_tilde - 1728))^(-1))	
 	
-	# step 7; 
-	E4ql_modp = R(- 48 * a_tilde)
-	E6ql_modp = R(864 * b_tilde)
+		# step 7; 
+		E4ql_modp = R(- 48 * a_tilde)
+		E6ql_modp = R(864 * b_tilde)
 	
-	# step 8;
-	nom = R( j_prime^2 * phi_lxx(j, j_tilde) + 2*l*j_prime*j_t_p*phi_lxy(j, j_tilde) + l^2*j_t_p^2*phi_lyy(j, j_tilde) )
-	denom = R( j_prime * phi_lx(j, j_tilde) ) 
-	if denom != R(0)
-		denom_inv = denom^(-1)
-	else
-		error("denominator is zero")
-	end
-	rat_rep = R( - nom * denom_inv )
+		# step 8;
+		nom = R( j_prime^2 * phi_lxx(j, j_tilde) 
+			 + 2*l*j_prime*j_t_p*phi_lxy(j, j_tilde) 
+			 + l^2*j_t_p^2*phi_lyy(j, j_tilde) )
+		denom = R( j_prime * phi_lx(j, j_tilde) ) 
 	
-	# step 9;
-	two_R = R(2)
-	three_R = R(3)
-	four_R = R(4)
-	five_R = R(5)
-	seven_R = R(7)
+		if denom == R(0)
+			#error("denominator is zero")
+			continue
+		end
+		rat_rep = R( - nom * denom^(-1) )
 	
-	p1 = 	R( l*two_R^(-1)*rat_rep ) + 
-			R( l*four_R^(-1)*(E4q_modp^2 * E6q_modp^(-1) - l*E4ql_modp^2 * E6ql_modp^(-1)) ) + 
-			R( l*three_R^(-1)*(E6q_modp * E4q_modp^(-1) - l*E6ql_modp^2 * E4ql_modp^(-1)) )
+		# step 9: 
+		A = R(l*R(2)^(-1)*rat_rep)
+		B = R(l*R(4)^(-1)*(E4q_modp^2 * E6q_modp^(-1) - l*E4ql_modp^2 * E6ql_modp^(-1)))
+		C = R(l*R(3)^(-1)*(E6q_modp * E4q_modp^(-1) - l*E6ql_modp * E4ql_modp^(-1)))
+		p1 = R( A + B + C )
 	 
-	# d = (l-1)/2 which corresponds to the degree of the  
-	# division polynomial factor Fl(x);
-	#d = ((l-1) * two_R^(-1))
-	d = Int((l-1)//2)
+		# step 10; 
+		c1 = R( - a_4 * R(5)^(-1) ) 
+		c2 = R( - a_6 * R(7)^(-1) ) 
+		cks = [ c1, c2 ]
+	
+		c1_t = R( - a_tilde * l^4 * R(5)^(-1) )
+		c2_t = R( - b_tilde * l^6 * R(7)^(-1) )
+		cks_t = [ c1_t, c2_t ]
 	
 	
-	# step 10;
-	c1 = R( - a_4 * five_R^(-1) ) 
-	c2 = R( - a_6 * seven_R^(-1) ) 
-	cks = [ c1, c2 ]
-	
-	c1_t = R( - a_tilde * five_R^(-1) )
-	c2_t = R( - b_tilde * seven_R^(-1) )
-	cks_t = [ c1_t, c2_t ]
-	
-	if d >= 3
-		for k in 3:d
-			pre_fact = R(three_R * ( (k - two_R) * (two_R*k + three_R) )^(-1) )
+		# d = (l-1)/2 which corresponds to the degree of the  division polynomial factor Fl(x);
+		d = Int((l-1)//2)
+		if d >= 3
+			for k in 3:d
+				pre_fact = R(R(3) * ( (k - R(2)) * (R(2)*k + R(3)) )^(-1) )
 			
-			ck = R(pre_fact * sum( [ cks[j]*cks[k-1-j] for j in 1:k-2 ] ))
-			append!(cks, [ck])
+				ck = R(pre_fact * sum( [ cks[j]*cks[k-1-j] for j in 1:k-2 ] ))
+				append!(cks, [ck])
 			
-			ck_t = R(pre_fact * sum( [ cks_t[j]*cks_t[k-1-j] for j in 1:k-2 ] ) )
-			append!(cks_t, [ck_t])
+				ck_t = R(pre_fact * sum( [ cks_t[j]*cks_t[k-1-j] for j in 1:k-2 ] ) )
+				append!(cks_t, [ck_t])
+			end
+		end
+	
+		# step 11, obtain the coefficients of Fl(x);
+		# we need here at most d-terms in order to determine the coefficients 
+		F_ld = 1
+		F_ld_1 = R( - p1 * R(2)^(-1) )
+		F_ld_2 = R( p1^2 * R(2)^(-3) - 
+	          ((cks_t[1] - l*cks[1])* R(12)^(-1)) - 
+			  (cks[1]*(l - 1) * R(2)^(-1)) )
+		#F_ld_3 = R(	- p1^3 * R(48)^(-1) - ((cks_t[2] -l*cks[2] ) * R(30))^(-1) + p1 * ( (cks_t[1] - l*cks[1]) * R(24)^(-1)) - cks[2] * (l - 1) * R(2)^(-1) + cks[1] * p1 * (l - R(3)) * R(4)^(-1) )
+		
+		append!(F_lds, [F_ld])
+		append!(F_lds, [F_ld_1])
+		append!(F_lds, [F_ld_2])
+	
+		# add recursion formula; for all 1 <= i <= d and with w = z^2,  
+		# we have the formula VII.24,
+		# F_{l, d-i} = [A(w)]_i - sum_{k=1}^i( sum_{j=0}^k ( binomial(d-i+k, k-j) * [C(w)^{k-j}]_j ) ) * F_{l, d-i+k}, where
+		# [A(w)]_i = coefficient of w^i in 
+		# A(w) = exp(-1/2*p1*w - sum_{k=1}^\infty (cks_t[k] - l* cks[k])/(2k+1)*(2k+2) * w^{1+k}), and where
+		# [C(w)^{k-j}]_j = prod_{s=1}^(k-j)( [C(w)]_j ), where
+		# C(w) = sum_{k=1}^\infty (c_k*w^k).
+	
+		if d >= 3
+			for i in 3:d
+				Aw_i = R( (cks_t[d-1] - l * cks[d-1]) * R((2*(d-1) + 1) * (2 * (d-1) + 2))^(-1) )
+				println("Aw_i = ", Aw_i)
+			
+				outer_sum = 0
+				for k in 1:i
+					inner_sum = 0
+					for j in 0:k
+					
+						bc = binomial(d-i+k, k-j)
+						#println("bc = ", bc)
+					
+						if j == 0
+							Cw_j = 0
+						else
+							Cw_j = cks[j]
+						end
+						#println("Cw_j = ", Cw_j)
+					
+						Cw_js = R(1)
+						for t in 1:k-j
+							Cw_js *= R(Cw_j)
+						end
+					
+						inner_sum += (bc * Cw_j)
+						#println("inner_sum = ", inner_sum)			
+					
+					end 
+					dik = d - i + k
+					F_l_dik = F_lds[dik]
+					outer_sum = inner_sum * F_l_dik
+					#println("outer_sum = ", outer_sum)
+				end
+				F_l_d_i = R( Aw_i - outer_sum )
+				#println("F_l_d_i = ", F_l_d_i)
+				append!(F_lds, [F_l_d_i])
+			end
+		end	
+		
+		# step 11;
+		maxFl = length(F_lds) - 1
+		Fl_monomials = [ x^t for t in maxFl:-1:0 ]
+		F_l = sum( F_lds[i] * Fl_monomials[i] for i in 1:maxFl+1 )
+		
+		# for test reasons compute division polkynomial f_l(x) and check 
+		# if F_l(x) | f_l(x)
+		f_ls = division_polynomial_univariate(E, l)
+		f_l = f_ls[1]
+		
+		if (gcd(F_l, f_l) != 1) & (degree(F_l) == floor(Int, (l-1)/2))
+			# we need only one factor of f_l(x), namely one F_l(x)
+			return F_l
 		end
 	end
-	
-	println(cks)
-	println(cks_t)
-	
-	# step 11, obtain the coefficients of Fl(x);
-	F_ld = 1
-	F_ld_1 = R( - p1 * two_R^(-1) )
-	F_ld_2 = R( p1^2 * two_R^(-3) 
-				- ((cks_t[1] - l*cks[1])*(three_R * four_R)^(-1)) 
-				- (cks[1]*(l - 1) * two_R^(-1)) )
-	F_ld_3 = R(	- p1^3 * (three_R * two_R^4)^(-1) 
-				- ((cks_t[2] -l*cks[2] ) * (two_R * three_R * five_R)^(-1)) 
-				+ p1 * ( (cks_t[1] - l*cks[1]) * (two_R^3 * three_R)^(-1)) 
-				- cks[2] * (l - 1) * two_R^(-1) 
-				+ cks[1] * p1 * (l - three_R) * (two_R^2)^(-1) )
-	
-	# F_lds = [F_ld_1]			
-	# add recursion formula
-	
-	
-	return true
+		
+	error("unspecified error")	
 end
 
 
@@ -824,7 +870,19 @@ return false, nothing
 end
 
 
-
+@doc raw"""
+	FindEigenvalueModl(Flx, E) -> Integers
+This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
+"""
+function FindEigenvalueModl(Flx, E)
+	R = base_field(E)
+	Rxy, (x, y) = polynomial_ring(R, ["x", "y"]) 
+	
+    #Lx, X = polynomial_ring(L, "X")
+    #Lxy, Y = polynomial_ring(Lx, "Y")
+	
+	return 1
+end
 
 ################################################################################
 #
@@ -833,26 +891,6 @@ end
 #  Notes by Bogdan Adrian Dina based on the books Elliptic and Hyperelliptic 
 #  Curve Cryptography (EHCC) by H. Cohen and G. Frey.
 #  
-#  Content: 1. Elkies primes; ...
-# 
-#  2. l-th modular polynomial Phi_l( X, Y ); there are two main problems
-#  related to the computation of Phi_l( X, Y ): the size of their coefficients increases badly as increases and their degree in Y is too high. 
-#  From [page 418, EHCC] we have that 
-#  Phi_l(X, j(tau)) = (X - j(l*tau))* prod_{i=0}^{l - 1} (X - j( -l/ (tau + i) ) ), where tau is an element in the upper half-plane. The main disadvantage of this polynomial is its huge coefficients. Instead we use the following
-# 
-#  3. canonical modular polynomials Phi^c_l( X, j(tau) ) = (X - f_l(tau))* prod_{i=0}^{l - 1} (X - f_l(-1/tau + i)), where 
-#  f_l(tau) is given by a power series expansion of the form as in [page 418, EHCC].
-#
-#  4. Computing separable isogenies in finite fields of large characteristic: 
-#  assume l is an Elkies prime. Then, by [Thm. 17.12, EHCC] implies that there exists a subgroup C subset E[l] of order l which is an eigenspace of the Frobenius endomorphism Phi_p. Furthermore, there exists an isogenous elliptic curve E' = E/C and a separable isogeny of degree l between E and E'.
-#  
-#
-# 
-#
-# 
-#
-# 
-#
 # Algorithm:
 # INPUT: An ordinary elliptic curve E over Fq
 # OUTPUT: The number of points #E(Fq)
@@ -861,7 +899,7 @@ end
 # 2.  	if l is Elkies prime then do: // test if l is Atkin or Elkies prime.
 # 3.		determine polynomial Fl(x) := prod_{±Pi in C\{0}} ( x - (Pi)_x )
 #			of degree (l-1)/2.
-# 4.		Find eigenvalue lambda mod l. then
+# 4.		Find eigenvalue lambda mod l. 
 # 5.		t := lambda + q/lambda (mod l)
 # 6. 		Append(EE, [t, l])
 # 7.	else (l is Atkin prime) do:
@@ -871,10 +909,6 @@ end
 # 11.	l = NextPrime(l)
 # 12. Recover t using the set A and EE, the CRT and BSGS.
 # 13. Retrun q + 1 - t.
-#
-# Example: 	F = GF(5) 
-# 			E = EllipticCurve(F, [1,1,1,0,1])  
-# 			@btime Hecke.order_via_SEA(E)
 #
 #   
 ################################################################################
@@ -905,10 +939,9 @@ function order_via_SEA(E::EllCrv{T}) where T<:FinFieldElem
 	
 	# main procedure:
 	M = 1 
-	l = 3 # TODO: the case l = 2 we will treat separately
+	l = 2 
 	A = []
 	EE = []
-	#j = j_invariant(E) 
 	M_max = 4*isqrt(q)
 	
 	while M < M_max
@@ -918,10 +951,15 @@ function order_via_SEA(E::EllCrv{T}) where T<:FinFieldElem
 			continue
 		end
 		
-		test, irred_facts_of_phil = isElkiesPrime(l, E)
+		if l == 2
+			println("not implemented yet")
+		else
+			test, irred_facts_of_phil = isElkiesPrime(l, E)
+		end
 		
 		if test == true
-			Flx = ElkiesProcedure(E, l, irred_facts_of_phil)	
+			Flx = ElkiesProcedure(l, E)	
+			lambda = FindEigenvalueModl(Flx, E)
 		else
 			println("not implemented yet.")
 			#Tl = AtkinProcedure(E, l)
