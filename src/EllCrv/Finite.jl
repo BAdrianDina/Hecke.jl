@@ -568,14 +568,15 @@ end
 
 This algorithm is [Algorithm 7.3, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
-################################################################################
-#	Exammple:
-#	F = GF(131)
-#	E = EllipticCurve(F, [1,23])
-#	@time Hecke.ElkiesProcedure(5, E)
-################################################################################
+
 #function ElkiesProcedure(l::Int, E::EllCrv{T}, irred_facts_of_phil::Vector{Any}) where T<:FinFieldElem
 function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
+	################################################################################
+	#	Exammple:
+	#	F = GF(131)
+	#	E = EllipticCurve(F, [1,23])
+	#	@time Hecke.ElkiesProcedure(5, E)
+	################################################################################
 	
     R = base_field(E)
     q = order(R)
@@ -793,6 +794,47 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	error("unspecified error")	
 end
 
+@doc raw"""
+	AtkinProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
+	
+This algorithm is [Algorithm VII.4, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
+"""
+function AtkinProcedure(l::Int, r::Int, E::EllCrv{T}) where T<:FinFieldElem
+	
+    R = base_field(E)
+    q = order(R)
+    p = characteristic(R)
+	
+	Flsq, g = FiniteField(l, 2, "g")
+	S = [ g^(Int(i*(l^2-1)/r)) for i in 1:r-1 if gcd(i,r) == 1 ]
+	
+	if length(S) == 0
+		error("#S = 0")
+	end
+	
+	
+	S_tups = [ [i,j] for i in Flsq for j in Flsq ]
+	
+	TT = []
+	for gr in S 
+		for tup in S_tups
+			g1 = tup[1]
+			g2 = tup[2]
+			t = g1 + g*g2
+			
+			if gr == t 
+				z = Int(q*(g1 + 1)/2) % l
+				println(z)
+				# TODO: continue here, step 9 in VII.4
+				break	
+			end
+		end
+	end
+	
+
+	return TT
+end
+
 
 @doc raw"""
 	isElkiesPrime(l::Integers) -> Integers
@@ -855,7 +897,7 @@ function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	# I.1 deg_irred_facts = [1, l], up to permutation, or 
 	# I.2 deg_irred_facts = [1, 1, ..., 1], or 
 	# II. deg_irred_facts = [1, 1, r, ..., r] and r|l-1.
-	# if deg_irred_facts = [r, r, ..., r], then l is an Atkin prime.
+	# III. if deg_irred_facts = [r, r, ..., r], with r > 1, then l is an Atkin prime.
 	
 	if ( length(deg_irred_facts) == 2 ) & ( sum(deg_irred_facts) == l+1 ) # case I.1;
 		return true, irred_facts
@@ -866,10 +908,17 @@ function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 		return true, irred_facts  
 	end
 
-return false, nothing
+	# case III
+	# the second return value corresponds to the value r for the Atkin procedure
+	r = deg_irred_facts[1]
+	
+	return false, r
 end
 
 
+
+
+# TODO:
 @doc raw"""
 	FindEigenvalueModl(Flx, E) -> Integers
 This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
@@ -959,10 +1008,12 @@ function order_via_SEA(E::EllCrv{T}) where T<:FinFieldElem
 		
 		if test == true
 			Flx = ElkiesProcedure(l, E)	
+			# TODO: continue here with another approcah instead of defining a 
+			# quotient ring RR = Fq[x, y]/(E, Flx):
 			lambda = FindEigenvalueModl(Flx, E)
 		else
-			println("not implemented yet.")
-			#Tl = AtkinProcedure(E, l)
+			r = irred_facts_of_phil
+			Tl = AtkinProcedure(l, r, E)
 			#append!(A, Tl)
 		end
 		
