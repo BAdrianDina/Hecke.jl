@@ -464,13 +464,13 @@ end
 #	evaluete_classical_modular_polynomial_at_j_invariant(phi_l, j_invariant(E))
 ################################################################################
 @doc raw"""
-	evaluate_classical_modular_polynomial_at_j_invariant(phi_l::Poly) -> Poly
+	modular_polynomial_at_j_invariant(phi_l::Poly) -> Poly
 
 This algorithm is computing the value of the classical modular polynomial at the 
 point P = (x, j), where j is the j-invariant of an elliptic curve defined over Fq. 
 Function returns a polynomial in Fq[x]. 
 """
-function evaluate_classical_modular_polynomial_at_j_invariant(phil, j)
+function modular_polynomial_at_j_invariant(phil, j)
 	#where T<: Integer
 	# TODO: I am not sure yet, it PolyElem is the correct data type; this needs to be checked! And to check which data type is phil.
 	# how do I define j to be of type field element?
@@ -562,6 +562,67 @@ function partial_derivative_classical_modular_polynomial(phil)
 end
 
 
+@doc raw""" 
+"""
+function compute_Fl_polynomial(d::Int)
+	
+	
+	return 1
+end
+
+
+@doc raw""" 
+"""
+function compute_ck_coeffs(d, a_4, a_6)
+	
+	R = parent(a_4)
+	
+	c1 = R( - a_4 * R(5)^(-1) ) 
+	c2 = R( - a_6 * R(7)^(-1) ) 
+	
+	if d == 1
+		return [c1]
+	elseif d == 2
+		return [c1, c2]
+	end
+	
+	cks = []
+	for k in 3:d
+			pre_fact = R(R(3) * ( (k - R(2)) * (R(2)*k + R(3)) )^(-1) )
+		
+			ck = R(pre_fact * sum( [ cks[j]*cks[k-1-j] for j in 1:k-2 ] ))
+			append!(cks, [ck])
+		end
+	end
+	return cks
+end
+
+@doc raw""" 
+"""
+function compute_ckt_coeffs(d, l, a_t, b_t)
+	
+	R = parent(a_t)
+	
+	c1_t = R( - a_t * l^4 * R(5)^(-1) )
+	c2_t = R( - b_t * l^6 * R(7)^(-1) )
+	
+	if d == 1
+		return [c1_t]
+	elseif d == 2
+		return [c1_t, c2_t]
+	end
+	
+	cks = []
+	for k in 3:d
+			pre_fact = R(R(3) * ( (k - R(2)) * (R(2)*k + R(3)) )^(-1) )
+			ck_t = R(pre_fact * sum( [ cks_t[j]*cks_t[k-1-j] for j in 1:k-2 ] ) )
+			append!(cks_t, [ck_t])
+		end
+	end
+	return cks
+	
+end
+
 @doc raw"""
 	ElkiesProcedure(l::Int, E::EllCrv{T}, irred_facts_of_phil::Vector{Any}) where T<:FinFieldElem
 
@@ -575,6 +636,7 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	#	Exammple:
 	#	F = GF(131)
 	#	E = EllipticCurve(F, [1,23])
+	#   Hecke.ElkiesProcedure(3, E)
 	#	@time Hecke.ElkiesProcedure(5, E)
 	################################################################################
 	
@@ -604,7 +666,7 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	
 	
 	# from now on all computations are in Fp, see [Chapter VII.4, ECC];
-	# to determine the factor Fl(x), of degree d = (l-1)/2, we proceed as follows:
+	# to determine the factor Fl(x), of degree d := (l-1)/2, we proceed as follows:
 	# 1. given E over Fp, j = j(E), determine a j-invariant j_tilde of an isogenous curve, by determining a root of the modular polynomial   phil(x, j), in other words phil(j_tilde, j) = 0.
 	# 2. given j_tilde, determine coefficients a_tilde, b_tilde in Fp of an isogenous curve E_tilde: Y^2 = x^3 + a_tilde*X + b_tilde,          j_tilde = j(E_tilde).
 	# 3. knowing the isogenous curve E_tilde, and the kernel of the isogeny phi: E --> E_tilde, compute the sum of the x-coord. of the points in ker(phi). From (E, E_tilde) and the sum of the x-coord. of the points in ker(phi), determine Fl(x):
@@ -612,7 +674,7 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	
 	
  	# phi_lFq in Fp[x, y], phi_lFqj in Fp[x];
-	phi_lFq, phi_lFqj = evaluate_classical_modular_polynomial_at_j_invariant(phi_l, j)
+	phi_lFq, phi_lFqj = modular_polynomial_at_j_invariant(phi_l, j)
 	
 
 	RR, x = polynomial_ring(R, "x")
@@ -640,11 +702,22 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	
 	# step 4;
 	# for any of the two roots in root_facts, we compute 
-	# Equation VII.17 on page 126 in ECC; the whole procedure
-	# has to be done over Fp; 
+	# Equation VII.17 on page 126 in ECC, over Fp; 
 	
 	_, _, _, a_4, a_6 = a_invars(E)
+	
 	F_l = 0
+	
+	# d = (l-1)/2; it corresponds to the degree of the  
+	# division polynomial factor Fl(x).
+	d = Int((l-1)//2)
+	
+	# TODO: implement
+	#Fl = compute_Fl_polynomial(d)
+	
+	
+	
+	
 	for j_tilde in root_facts
 		F_lds = []
 		# we construct two to E isogenies curves;
@@ -699,9 +772,11 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 		c2_t = R( - b_tilde * l^6 * R(7)^(-1) )
 		cks_t = [ c1_t, c2_t ]
 	
-	
-		# d = (l-1)/2 which corresponds to the degree of the  division polynomial factor Fl(x);
-		d = Int((l-1)//2)
+		
+		cks = compute_ck_coeffs(d, a_4, a_6)
+		ckts = compute_ckt_coeffs(d, l, a_tilde, b_tilde)
+		
+		
 		if d >= 3
 			for k in 3:d
 				pre_fact = R(R(3) * ( (k - R(2)) * (R(2)*k + R(3)) )^(-1) )
@@ -738,8 +813,7 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 		if d >= 3
 			for i in 3:d
 				Aw_i = R( (cks_t[d-1] - l * cks[d-1]) * R((2*(d-1) + 1) * (2 * (d-1) + 2))^(-1) )
-				println("Aw_i = ", Aw_i)
-			
+				
 				outer_sum = 0
 				for k in 1:i
 					inner_sum = 0
@@ -785,13 +859,18 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 		f_ls = division_polynomial_univariate(E, l)
 		f_l = f_ls[1]
 		
-		if (gcd(F_l, f_l) != 1) & (degree(F_l) == floor(Int, (l-1)/2))
+		#TODO: There is an error inside; it happens for l = 2.
+		if gcd(F_l, f_l) != 1
 			# we need only one factor of f_l(x), namely one F_l(x)
-			return F_l
+			if degree(F_l) == floor(Int, ((l-1)//2))
+				return F_l
+			else
+				error("error: degree(F_l) = ", degree(F_l), " and not ", floor(Int, (l-1)/2))
+			end
+		else
+			error("error: gcd(F_l, f_l) = ", gcd(F_l, f_l))
 		end
-	end
-		
-	error("unspecified error")	
+	end	
 end
 
 @doc raw"""
@@ -800,11 +879,20 @@ end
 This algorithm is [Algorithm VII.4, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
 function AtkinProcedure(l::Int, r::Int, E::EllCrv{T}) where T<:FinFieldElem
+	###################################################################
+	#	Exammple:
+	#   F = GF(131)
+	#	E = EllipticCurve(F, [1,23])
+	#   l = 17
+	#   test, r = Hecke.isElkiesPrime(l, E)
+	# 	Tl = Hecke.AtkinProcedure(l, r, E)
+	###################################################################
 	
     R = base_field(E)
     q = order(R)
     p = characteristic(R)
 	
+	Fl = GF(l)
 	Flsq, g = FiniteField(l, 2, "g")
 	S = [ g^(Int(i*(l^2-1)/r)) for i in 1:r-1 if gcd(i,r) == 1 ]
 	
@@ -812,27 +900,39 @@ function AtkinProcedure(l::Int, r::Int, E::EllCrv{T}) where T<:FinFieldElem
 		error("#S = 0")
 	end
 	
+	S_decomp = []
+	for x in S
+		append!(S_decomp, [[i, j] for i in 0:order(Fl) for j in 0:order(Fl) if i*g + j == x ])
+	end
 	
-	S_tups = [ [i,j] for i in Flsq for j in Flsq ]
+	if length(S_decomp) == 0
+		error("#S_decomp = 0")
+	end
 	
-	TT = []
-	for gr in S 
-		for tup in S_tups
-			g1 = tup[1]
-			g2 = tup[2]
-			t = g1 + g*g2
-			
-			if gr == t 
-				z = Int(q*(g1 + 1)/2) % l
-				println(z)
-				# TODO: continue here, step 9 in VII.4
-				break	
-			end
+	println("l = ", l)
+	# compute the inverse of 2 mod l:
+	# I guess there is a better solution in Julia
+	# which I still didn't find yet.
+	inv_2 = [ i for i in 1:l if (i*2%l) == 1][1]
+	println("2^-1 = ", inv_2)
+	
+	Tl = []
+	for tup in S_decomp
+		g1 = tup[2]
+		z = q*(g1+1)
+		z *= inv_2
+		z %= l
+		
+		try
+			x = sqrtmod(ZZ(z), ZZ(l))
+			append!(Tl, [[2*x, -2*x]])
+		catch
+			continue
 		end
 	end
 	
-
-	return TT
+	Tl = Set(Tl)
+	return Tl
 end
 
 
@@ -867,7 +967,7 @@ function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	
 	# the classical l.th modular polynomial:
 	phi_l = classical_modular_polynomial(l)	
-	phi_lFq, phi_lFqj = evaluate_classical_modular_polynomial_at_j_invariant(phi_l, j)
+	phi_lFq, phi_lFqj = modular_polynomial_at_j_invariant(phi_l, j)
 	
 	# decompose the modular polynomial;	
 	prod_irred_fac = collect( factor( phi_lFqj ))
@@ -915,10 +1015,7 @@ function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	return false, r
 end
 
-
-
-
-# TODO:
+# TODO: implement without quotient ring
 @doc raw"""
 	FindEigenvalueModl(Flx, E) -> Integers
 This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
@@ -935,31 +1032,9 @@ end
 
 ################################################################################
 #
-#  SEA algorithm
-#  Author: Bogdan Adrain Dina
-#  Notes by Bogdan Adrian Dina based on the books Elliptic and Hyperelliptic 
-#  Curve Cryptography (EHCC) by H. Cohen and G. Frey.
+#  SEA algorithm; notes by Bogdan Adrian Dina based on the book 
+#  Elliptic Curves in Cryptography (ECC) by Blake-Seroussi-Smart
 #  
-# Algorithm:
-# INPUT: An ordinary elliptic curve E over Fq
-# OUTPUT: The number of points #E(Fq)
-# Init step: M = 1, l = 2, A = [], EE = [], j = j(E) 
-# 1.  while M < 4*sqrt(q) do: 	
-# 2.  	if l is Elkies prime then do: // test if l is Atkin or Elkies prime.
-# 3.		determine polynomial Fl(x) := prod_{±Pi in C\{0}} ( x - (Pi)_x )
-#			of degree (l-1)/2.
-# 4.		Find eigenvalue lambda mod l. 
-# 5.		t := lambda + q/lambda (mod l)
-# 6. 		Append(EE, [t, l])
-# 7.	else (l is Atkin prime) do:
-# 8.		determine a small set T s.t. t (mod l) in T. // what is T exactly?
-# 9.		Append(A, [T, l]) 
-# 10.	M = M * l
-# 11.	l = NextPrime(l)
-# 12. Recover t using the set A and EE, the CRT and BSGS.
-# 13. Retrun q + 1 - t.
-#
-#   
 ################################################################################
 @doc raw"""
     order_via_SEA(E::EllCrv) -> ZZRingElem
@@ -981,47 +1056,69 @@ function order_via_SEA(E::EllCrv{T}) where T<:FinFieldElem
 	  error("Characteristic 2,3 not implemented yet")
     end
 	
+	
+	# TODO: we will imoplement a version for the case where char(R) = 2;
+	# see VII.5 for a detailed discussion and algorithm.
+	
+	# TODO: determining the trace modulo a prime power;
+	# see VII.6 for a detailed discussion and algorithm.
+	
+	
     if E.short == false
       E = short_weierstrass_model(E)[1]
     end
 	
 	
 	# main procedure:
+	A = Set()
+	E_ = Set()
+	
 	M = 1 
-	l = 2 
-	A = []
-	EE = []
 	M_max = 4*isqrt(q)
+	l = 2
 	
 	while M < M_max
 		
+		println("l = ", l)
 		
 		if l == p
 			continue
 		end
 		
-		if l == 2
-			println("not implemented yet")
-		else
-			test, irred_facts_of_phil = isElkiesPrime(l, E)
-		end
+		test, irred_facts_of_phil = isElkiesPrime(l, E)
 		
 		if test == true
 			Flx = ElkiesProcedure(l, E)	
+			
 			# TODO: continue here with another approcah instead of defining a 
 			# quotient ring RR = Fq[x, y]/(E, Flx):
-			lambda = FindEigenvalueModl(Flx, E)
+			# this is the bottleneck of the computation.
+			
+			#lambda = FindEigenvalueModl(Flx, E)
+			lambda = 1
+			
+			# compute the inverse of lambda mod l:
+			# I guess there is a better solution in Julia
+			# which I still didn't find yet.
+			inv_lambda = [ i for i in 1:l if ((i*lambda)%l) == 1][1]
+			
+			t = (lambda + (q * inv_lambda)) % l
+			
+			append!(E_, [t, l])
 		else
 			r = irred_facts_of_phil
+			println("r = ", r)
 			Tl = AtkinProcedure(l, r, E)
-			#append!(A, Tl)
+			push!(A, [Tl, l])
 		end
 		
-		# this is only for debugging steps:
-		break
+		M *= l
+		l = next_prime(l)
+		println("\n")
 	end 
 	
-	return 1	
+	# recover t 
+	return q + 1 - t	
 end 
 
 
