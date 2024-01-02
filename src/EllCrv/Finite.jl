@@ -595,28 +595,14 @@ function exp_Aw(d, x, p1, l, cks, cks_t)
 	
 	# in order to construct the exp. function exp(f);
 	# TODO: clarify if we expand f till degree(f).
-	RL, x = laurent_series_ring(R, degree(f)+1, "x")
+	#RL, x = laurent_series_ring(R, degree(f)+1, "x")
+	RL, x = laurent_series_ring(R, degree(f)^2, "x")
 	
 	coeffs = collect(coefficients(f))
 	f_lr = sum( coeffs[i+1] * x^(i) for i in 0:degree(f) )
-	f_lr = exp(f_lr)
+	f_lr_exp = exp(f_lr)
 	
-	return f_lr, f 
-end
-
-@doc raw""" 
-Returns the i-th. coefficient of f(x).
-"""
-function exp_Aw_i(Aw_d, i)
-	
-	# constant coefficient corresp. to entry 1 in coeffs.
-	coeffs = collect(coefficients(Aw_d))
-	
-	if length(coeffs) <= 1
-		return coeffs[1]
-	end
-	
-	return coeffs[i+1]
+	return f_lr_exp, f_lr 
 end
 
 @doc raw""" 
@@ -629,11 +615,42 @@ function Cw(d, x, cks)
 	end
 	
 	R = parent(cks[1])
-	f = sum( cks[k] * x^k for k in 1:d )	
+	f = sum( cks[k] * x^k for k in 1:d )
 	
-	return f
+	# in order to construct the exp. function exp(f);
+	# TODO: clarify if we expand f till degree(f).
+	#RL, x = laurent_series_ring(R, degree(f)+1, "x")
+	RL, x = laurent_series_ring(R, degree(f)^2, "x")
+	
+	coeffs = collect(coefficients(f))
+	f_ = sum( coeffs[i+1] * x^(i) for i in 0:degree(f) )	
+	
+	return f_
 end 
 
+@doc raw""" 
+Returns the i-th. coefficient of f(x).
+"""
+# not in use at the moment; instead we use 
+# the function exp_Aw_i2. 
+function exp_Aw_i(Aw_d, i)
+	
+	# constant coefficient corresp. to entry 1 in coeffs.
+	coeffs = collect(coefficients(Aw_d))
+	
+	if length(coeffs) <= 1
+		return coeffs[1]
+	end
+	
+	return coeffs[i+1]
+end
+
+function exp_Aw_i2(Aw_d, i)
+	return coeff(Aw_d, i)
+end
+
+# not in use at the moment; instead we use 
+# the function Cw_j2.
 @doc raw""" 
 Returns the i-th. coefficient of f(x).
 """
@@ -646,6 +663,85 @@ function Cw_j(Cw_d, j)
 	end
 	
 	return coeffs[j+1]
+end
+
+function Cw_j2(Cw_d, j)
+	return coeff(Cw_d, j)
+end
+
+@doc raw""" 
+TODO: write description
+"""
+function compute_Fli(d, Flds, Aw_d, Cw_d)
+	
+	if length(Flds) > d 
+		return Flds
+	end
+	
+	if ( length(Aw_d) <= 0 ) || ( length(Cw_d) <= 0 ) 
+		error("#Aw_d <= 0, and(or) #Cw_d <= 0. ")
+	end
+	
+	R = parent(Flds[1])
+	i = length(Flds) 
+	
+	Fli_d_i = Aw_i(Aw_d, i) - sum( Flds[i] * sum( binomial(d-i+k, k-j) * Cw_j(Cw_d^(k-j), j) for j in 0:k ) for k in 1:i ) 
+	
+	return compute_Fli(d, append!(Flds, [Fli_d_i]), Aw_d, Cw_d)
+end
+
+@doc raw""" 
+TODO: write documentation
+"""
+function compute_Fl(E, d, l, p1, cks, cks_t)
+	# test example
+	# F = GF(131)
+	# E = EllipticCurve(F, [1,23])
+	# l = 5
+	# test example
+		
+	# (1) Einen Algorithmus schreiben um gegeben eine ganze Zahl d = N alle c_k für k höchstens N zu bestimmen; verwende dazu (VII.22); dies soll über allgemeinen Körper funktioniert, damit du formelle Ausdrücke bestimmen kannst. --> done.
+	
+	# Hast du (1), so kannst du die Potenzreihe zwischen den Exp-Klammern in (VII.23) bis Präzision N bestimmen. Wir brauchen dann einen zweiten Teil:
+	# (2) Einen Algorithmus, um eine Potenzreihe effektiv exponentieren zu können, und einen, um zwei dieser Reihen effektiv zu multiplizieren. 
+	# An diesem Punkt kennst du die Koeffizienten von A (w) durch Exponentiation, und die von C (w)^{k - j} auch. Dann brauchst du nur noch
+
+	# (3) Eine Weise, um die Rekursion (VII.24) zu berechnen. Aber die Formel hast du ja, also das geht.
+
+	
+	if (length(cks) < d) || (length(cks_t) < d) || (length(cks) != length(cks_t))
+		error("error in #cks, and/or #cks_t. ")
+	end
+	
+	R = parent(cks[1])
+	RR, x = polynomial_ring(R, "x")
+	
+	Cw_d = Cw(d, x, cks)
+	exp_Aw_d, Aw_d = exp_Aw(d, x, p1, l, cks, cks_t)
+	
+	# I am working hwere at the moment ############
+	# tehre is an error inside!!!
+	# I need a function who is converting Laurent Series to 
+	# polynomials over Fp.
+	Fl_dis = compute_Fli(d, [R(1)], Aw_d, Cw_d)
+	# I am working here at the moment ############
+	
+	
+	
+	maxFl = length(Fl_dis) - 1
+	Fl_monomials = [ x^t for t in maxFl:-1:0 ]
+	F_l = sum( Fl_dis[i] * Fl_monomials[i] for i in 1:maxFl+1 )
+	
+	# for test reasons compute division polkynomial f_l(x)
+	# and check if F_l(x) | f_l(x)
+	f_ls = division_polynomial_univariate(E, l)
+	f_l = f_ls[1]
+	
+	if gcd(F_l, f_l) == 1
+		return false
+	end
+		
+	return true, Fl
 end
 
 @doc raw"""
@@ -725,81 +821,6 @@ function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	r = deg_irred_facts[1]
 	
 	return false, r
-end
-
-@doc raw""" 
-TODO: write description
-"""
-function compute_Fl_dis(d, Flds, Aw_d, Cw_d)
-	
-	if length(Flds) > d 
-		return Flds
-	end
-	
-	if ( length(Aw_d) <= 0 ) || ( length(Cw_d) <= 0 ) 
-		error("#Aw_d <= 0, and(or) #Cw_d <= 0. ")
-	end
-	
-	R = parent(Flds[1])
-	i = length(Flds) 
-	
-	Fli_d_i = Aw_i(Aw_d, i) - sum( Flds[i] * sum( binomial(d-i+k, k-j) * Cw_j(Cw_d^(k-j), j) for j in 0:k ) for k in 1:i ) 
-	
-	return compute_Fl_dis(d, append!(Flds, [Fli_d_i]), Aw_d, Cw_d)
-end
-
-@doc raw""" 
-TODO: write documentation
-"""
-function compute_Fl(E, d, l, p1, cks, cks_t)
-	# test example
-	# F = GF(131)
-	# E = EllipticCurve(F, [1,23])
-	# l = 5
-	# test example
-		
-	# (1) Einen Algorithmus schreiben um gegeben eine ganze Zahl d = N alle c_k für k höchstens N zu bestimmen; verwende dazu (VII.22); dies soll über allgemeinen Körper funktioniert, damit du formelle Ausdrücke bestimmen kannst. --> done.
-	
-	# Hast du (1), so kannst du die Potenzreihe zwischen den Exp-Klammern in (VII.23) bis Präzision N bestimmen. Du brauchst dann einen zweiten Teil:
-	# (2) Einen Algorithmus, um eine Potenzreihe effektiv exponentieren zu können, und einen, um zwei dieser Reihen effektiv zu multiplizieren. (Dies dürfte in jedem System verfügbar sein, und Magma hat es einfach als Exp.)
-	# An diesem Punkt kennst du die Koeffizienten von A (w) durch Exponentiation, und die von C (w)^{k - j} auch. Dann brauchst du nur noch
-
-	# (3) Eine Weise, um die Rekursion (VII.24) zu berechnen. Aber die Formel hast du ja, also das geht.
-
-	
-	if (length(cks) < d) || (length(cks_t) < d) || (length(cks) != length(cks_t))
-		error("error in #cks, and/or #cks_t. ")
-	end
-	
-	R = parent(cks[1])
-	RR, x = polynomial_ring(R, "x")
-	
-	Cw_d = Cw(d, x, cks)
-	Aw_d_exp, Aw_d = exp_Aw(d, x, p1, l, cks, cks_t)
-	
-	# I am working hwere at the moment ############
-	# tehre is an error inside!!!
-	# I need a function who is converting Laurent Series to 
-	# polynomials over Fp.
-	Fl_dis = compute_Fl_dis(d, [R(1)], Aw_d, Cw_d)
-	# I am working hwere at the moment ############
-	
-	
-	
-	maxFl = length(Fl_dis) - 1
-	Fl_monomials = [ x^t for t in maxFl:-1:0 ]
-	F_l = sum( Fl_dis[i] * Fl_monomials[i] for i in 1:maxFl+1 )
-	
-	# for test reasons compute division polkynomial f_l(x)
-	# and check if F_l(x) | f_l(x)
-	f_ls = division_polynomial_univariate(E, l)
-	f_l = f_ls[1]
-	
-	if gcd(F_l, f_l) == 1
-		return false
-	end
-		
-	return true, Fl
 end
 
 @doc raw"""
@@ -1019,6 +1040,9 @@ function AtkinProcedure(l::Int, r::Int, E::EllCrv{T}) where T<:FinFieldElem
 	Tl = Set(Tl)
 	return Tl
 end
+
+
+
 
 
 
