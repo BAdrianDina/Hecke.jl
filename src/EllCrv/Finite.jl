@@ -580,30 +580,6 @@ function compute_cks_coeffs(d, cks)
 	return compute_cks_coeffs(d, append!(cks, [ R( R(3) * R( ( (k - R(2)) * (R(2)*k + R(3)) )^(-1) )  * R( sum(cks[j]*cks[k-1-j] for j in 1:k-2 ) ) ) ]))
 end
 
-@doc raw""" 
-TODO: write documentation
-"""
-function exp_Aw(d, x, p1, l, cks, cks_t)
-	
-	if (length(cks) < d) || (length(cks_t) < d) || (length(cks) != length(cks_t))
-		error("error in #cks, and/or #cks_t. ")
-	end
-	
-	R = parent(cks[1]) 
-	
-	f =  (- R( p1 * R(2)^(-1)) * x) - sum( R((2*i + 1) * (2*i + 2))^(-1) * R(cks_t[i] - l*cks[i]) * x^(i + 1) for i in 1:d )	
-	
-	# in order to construct the exp. function exp(f);
-	# TODO: clarify if we expand f till degree(f).
-	#RL, x = laurent_series_ring(R, degree(f)+1, "x")
-	RL, x = laurent_series_ring(R, degree(f)^2, "x")
-	
-	coeffs = collect(coefficients(f))
-	f_lr = sum( coeffs[i+1] * x^(i) for i in 0:degree(f) )
-	f_lr_exp = exp(f_lr)
-	
-	return f_lr_exp, f_lr 
-end
 
 @doc raw""" 
 TODO: write documentation
@@ -669,6 +645,14 @@ function Cw_j2(Cw_d, j)
 	return coeff(Cw_d, j)
 end
 
+
+
+
+
+
+
+
+
 @doc raw""" 
 TODO: write description
 """
@@ -688,6 +672,40 @@ function compute_Fli(d, Flds, Aw_d, Cw_d)
 	Fli_d_i = Aw_i(Aw_d, i) - sum( Flds[i] * sum( binomial(d-i+k, k-j) * Cw_j(Cw_d^(k-j), j) for j in 0:k ) for k in 1:i ) 
 	
 	return compute_Fli(d, append!(Flds, [Fli_d_i]), Aw_d, Cw_d)
+end
+
+
+@doc raw""" 
+	exp_Aw(d, x, p1, l, cks, cks_t)
+
+Input: positive integer d, variable x, finite field elements p1, l, and arrays cks, cks_t corresponding
+to coefficients ck, ck_tilde from formulae (VII.22) in ECC.
+Output: the right hand-side of formulae (VII.23) in ECC.  
+"""
+function exp_Aw(d, x, p1, l, cks, cks_t)
+	
+	"TODO: I need tom check if I indeed need to constuct these complicated Laurent-series, or
+	if I can solve my problem of constructing exp(f) in a much easier way!
+	"
+	
+	if (length(cks) < d) || (length(cks_t) < d) || (length(cks) != length(cks_t))
+		error("error in #cks, and/or #cks_t. ")
+	end
+	
+	R = parent(cks[1]) 
+	
+	f =  (- R( p1 * R(2)^(-1)) * x) - sum( R((2*i + 1) * (2*i + 2))^(-1) * R(cks_t[i] - l*cks[i]) * x^(i + 1) for i in 1:d )	
+	
+	# in order to construct the function exp(f);
+	# TODO: clarify if we expand f till degree(f).
+	#RL, x = laurent_series_ring(R, degree(f)+1, "x")
+	RL, x = laurent_series_ring(R, degree(f)^2, "x")
+	
+	coeffs = collect(coefficients(f))
+	f_lr = sum( coeffs[i+1] * x^(i) for i in 0:degree(f) )
+	f_lr_exp = exp(f_lr)
+	
+	return f_lr_exp, f_lr 
 end
 
 @doc raw""" 
@@ -720,7 +738,7 @@ function compute_Fl(E, d, l, p1, cks, cks_t)
 	exp_Aw_d, Aw_d = exp_Aw(d, x, p1, l, cks, cks_t)
 	
 	# I am working hwere at the moment ############
-	# tehre is an error inside!!!
+	# there is an error inside!!!
 	# I need a function who is converting Laurent Series to 
 	# polynomials over Fp.
 	Fl_dis = compute_Fli(d, [R(1)], Aw_d, Cw_d)
@@ -830,13 +848,6 @@ This algorithm is [Algorithm 7.3, Elliptic Curves in Cryptography, Blake-Serouss
 
 #function ElkiesProcedure(l::Int, E::EllCrv{T}, irred_facts_of_phil::Vector{Any}) where T<:FinFieldElem
 function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
-	################################################################################
-	#	Exammple:
-	#	F = GF(131)
-	#	E = EllipticCurve(F, [1,23])
-	#   Hecke.ElkiesProcedure(3, E)
-	#	@time Hecke.ElkiesProcedure(5, E)
-	################################################################################
 	
     R = base_field(E)
     q = order(R)
@@ -901,7 +912,6 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	# step 4;
 	# for any of the two roots in root_facts, we compute 
 	# Equation VII.17 on page 126 in ECC, over Fp; 
-	
 	_, _, _, a_4, a_6 = a_invars(E)
 	
 	
@@ -951,15 +961,13 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 		C = R(l*R(3)^(-1)*(E6q_modp * E4q_modp^(-1) - l*E6ql_modp * E4ql_modp^(-1)))
 		p1 = R( A + B + C )
 	 
-		
-		
 		cks = compute_cks_coeffs( d, [ R( - a_4 * R(5)^(-1) ), R( - a_6 * R(7)^(-1) ) ] )
 		cks_t = compute_cks_coeffs(d, [R( - a_tilde * l^4 * R(5)^(-1) ), R( - b_tilde * l^6 * R(7)^(-1) )] )
 		
-		# I am working hwere at the moment
+		######### I am working hwere at the moment ############################.
 		# TODO: I am here in the code, 25.11.23
 		test, Fl = compute_Fl(E, d, l, p1, cks, cks_t)
-		# I am working hwere at the moment.
+		######### I am working hwere at the moment ############################.
 		
 		
 	
