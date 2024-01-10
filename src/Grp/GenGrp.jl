@@ -4,13 +4,6 @@
 #
 ################################################################################
 
-export GrpGen, GrpGenElem, GrpGenToGrpGenMor, GrpGenToGrpAbMor, GrpAbToGrpGenMor,
-generic_group, is_abelian, is_cyclic, order, elements,
-getindex, subgroups, quotient, inv, kernel, elem_type, parent, *,
-psylow_subgroup, commutator_subgroup, derived_series, order, direct_product,
-conjugacy_classes, is_characteristic, induces_to_subgroup, induces_to_quotient,
-max_order, gen_2_ab, orbit, stabilizer
-
 ################################################################################
 #
 #  Types
@@ -180,8 +173,6 @@ end
 ################################################################################
 
 elem_type(::Type{GrpGen}) = GrpGenElem
-
-elem_type(::GrpGen) = GrpGenElem
 
 Base.hash(G::GrpGenElem, h::UInt) = Base.hash(G.i, h)
 

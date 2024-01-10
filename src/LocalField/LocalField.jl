@@ -1,6 +1,3 @@
-export local_field, inertia_degree, absolute_inertia_degree, absolute_ramification_index,
-        eisenstein_extension, unramified_extension
-
 ################################################################################
 #
 #  Show function
@@ -40,11 +37,7 @@ prime(K::LocalField) = prime(base_field(K))
 base_field_type(K::LocalField{S, T}) where {S <: FieldElem, T <: LocalFieldParameter} = parent_type(S)
 base_field_type(::Type{LocalField{S, T}}) where {S <: FieldElem, T <: LocalFieldParameter} = parent_type(S)
 
-elem_type(K::LocalField{S, T}) where {S <: FieldElem, T <: LocalFieldParameter} = LocalFieldElem{S, T}
 elem_type(::Type{LocalField{S, T}}) where {S <: FieldElem, T <: LocalFieldParameter} = LocalFieldElem{S, T}
-
-dense_matrix_type(K::LocalField{S, T}) where {S <: FieldElem, T <: LocalFieldParameter} =  Generic.MatSpaceElem{LocalFieldElem{S, T}}
-dense_matrix_type(::Type{LocalField{S, T}}) where {S <: FieldElem, T <: LocalFieldParameter} =  Generic.MatSpaceElem{LocalFieldElem{S, T}}
 
 dense_poly_type(K::LocalField{S, T}) where {S <: FieldElem, T <: LocalFieldParameter} = Generic.Poly{LocalFieldElem{S, T}}
 dense_poly_type(::Type{LocalField{S, T}}) where {S <: FieldElem, T <: LocalFieldParameter} = Generic.Poly{LocalFieldElem{S, T}}
@@ -465,7 +458,7 @@ function residue_field(K::LocalField{S, UnramifiedLocalField}) where {S <: Field
    Fpt = polynomial_ring(ks, cached = false)[1]
    g = defining_polynomial(K)
    f = Fpt([ks(mks(coeff(g, i))) for i=0:degree(K)])
-   kk = Native.finite_field(f)[1]
+   kk, = Nemo._residue_field(f)
    bas = basis(K)
    u = gen(kk)
    function proj(a::Hecke.LocalFieldElem)
@@ -494,9 +487,10 @@ end
 
  function unramified_extension(L::Union{FlintPadicField, FlintQadicField, LocalField}, n::Int)
    R, mR = residue_field(L)
-   f = polynomial(R, push!([rand(R) for i = 0:n-1], one(R)))
+   Rt, t = polynomial_ring(R, "t", cached = false)
+   f = Rt(push!([rand(R) for i = 0:n-1], one(R)))
    while !is_irreducible(f)
-     f = polynomial(R, push!([rand(R) for i = 0:n-1], one(R)))
+     f = Rt(push!([rand(R) for i = 0:n-1], one(R)))
    end
    f_L = polynomial(L, [mR\(coeff(f, i)) for i = 0:degree(f)])
    return unramified_extension(f_L)

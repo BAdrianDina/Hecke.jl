@@ -136,11 +136,11 @@
     G = small_group(6, 1)
     QG = QQ[G]
     ZG = Order(QG, basis(QG))
-    @test !ismaximal(ZG)
+    @test !is_maximal(ZG)
 
     # This is not ZG, so we need to also make it maximal at 5
     O = Order(QG, [one(QG), 5 * QG(gens(G)[1]), 5 * QG(gens(G)[2])])
-    @test !ismaximal(O)
+    @test !is_maximal(O)
     @test discriminant(maximal_order(ZG)) == -1
 
     S = overorders(ZG)
@@ -150,16 +150,16 @@
     for R in S
       _ = maximal_order(R)
     end
-    @test count(ismaximal, S) == 2
+    @test count(is_maximal, S) == 2
 
     # Trigger multiple maximal orders in the AlgAss case
     A, AtoQG = AlgAss(QG)
     ZG = Order(A, basis(A))
-    @test !ismaximal(ZG)
+    @test !is_maximal(ZG)
 
     # This is not ZG, so we need to also make it maximal at 5
     O = Order(A, [one(A), 5 * (AtoQG\(QG(gens(G)[1]))), (5 * (AtoQG\(QG(gens(G)[2]))))])
-    @test !ismaximal(O)
+    @test !is_maximal(O)
     @test discriminant(maximal_order(ZG)) == -1
 
     S = overorders(ZG)
@@ -169,7 +169,7 @@
     for R in S
       _ = maximal_order(R)
     end
-    @test count(ismaximal, S) == 2
+    @test count(is_maximal, S) == 2
 
     A = matrix_algebra(QQ, 6)
     O = Order(A, basis(A), isbasis = true)
@@ -255,4 +255,15 @@
     OO = Hecke._order(B, [BtoA\A(matrix(K, [ d 0 0; 0 0 0; 0 0 0 ]))], extends = O)
     @test discriminant(OO) == ZZ(2304)^9
   end
+
+  # zero algebra
+  
+  A = zero_algebra(QQ)
+  B = basis_matrix(elem_type(A)[], FakeFmpqMat)
+  @test (nrows(B), ncols(B)) == (0, 0)
+  M = maximal_order(A)
+  @test is_maximal(M)
+  O = Order(A, [zero(A)])
+  @test is_maximal(O)
+
 end

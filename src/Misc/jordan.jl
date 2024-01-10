@@ -1,6 +1,3 @@
-export spectrum, eigenspace, jordan_normal_form, rational_canonical_form,
-companion_matrix, common_eigenspaces, eigenspaces
-
 @doc raw"""
     spectrum(M::MatElem{T}) where T <: FieldElem -> Dict{T, Int}
 
@@ -81,6 +78,7 @@ function closure_with_pol(v::MatElem{T}, M::MatElem{T}) where T <: FieldElem
   E = rref(v)[2]
   w = v*M
   res = Hecke.cleanvect(E, w)
+  v = deepcopy(v) # the output should not "share" entries with the input
   while !iszero(res)
     v = vcat(v, w)
     E = vcat(E, res)
@@ -848,7 +846,7 @@ function simultaneous_diagonalization(L::Vector{S}; check::Bool = true) where S 
 
   # Compute transformation matrix
   CE = common_eigenspaces(L, side = :left)
-  A =  Hecke.vcat(collect(values(CE)))
+  A = reduce(vcat, values(CE))
 
   # Compute diagonal forms
   D = [ zero_matrix(base_ring(L[1]), nrows(L[1]), ncols(L[1])) for i = 1:length(L) ]

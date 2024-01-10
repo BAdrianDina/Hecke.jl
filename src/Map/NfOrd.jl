@@ -557,7 +557,7 @@ function NfOrdToFqFieldMor(O::NfOrd, P::NfOrdIdl)
   z.P = P
   a, g, b = get_residue_field_data(P)
   p = minimum(P)
-  R = Nemo._GF(p, cached = false)
+  R = GF(p, cached = false)
   Rx, x = polynomial_ring(R, "_\$", cached = false)
   F, = Nemo._residue_field(Rx(g), "_\$", check = false)
   d = degree(g)
@@ -604,7 +604,11 @@ function NfOrdToFqFieldMor(O::NfOrd, P::NfOrdIdl)
     for i in 2:d
       add!(zz.elem_in_nf, zz.elem_in_nf, powers[i - 1] * lift(ZZ, coeff(y, i - 1)))
     end
-    zz.elem_in_nf = mod(zz.elem_in_nf, p)
+    if is_defining_polynomial_nice(nf(O)) && contains_equation_order(O)
+      zz.elem_in_nf = mod(zz.elem_in_nf, p)
+    else
+      zz = mod(zz, p)
+    end
     @assert _image(zz) == y
     return zz
   end

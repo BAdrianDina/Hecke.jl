@@ -1,7 +1,5 @@
 import Base.Vector
 
-export sparse_row, dot, scale_row!, add_scaled_row, permute_row, dense_row
-
 ################################################################################
 #
 #  Parent constructor
@@ -537,13 +535,13 @@ function div(A::SRow{T}, b::Integer) where T
   return div(A, base_ring(A)(b))
 end
 
-function divexact(A::SRow{T}, b::T) where T
+function divexact(A::SRow{T}, b::T; check::Bool=true) where T
   B = sparse_row(base_ring(A))
   if iszero(b)
     return error("Division by zero")
   end
   for (p,v) = A
-    nv = divexact(v, b)
+    nv = divexact(v, b; check=check)
     @assert !iszero(nv)
     push!(B.pos, p)
     push!(B.values, nv)
@@ -551,11 +549,11 @@ function divexact(A::SRow{T}, b::T) where T
   return B
 end
 
-function divexact(A::SRow{T}, b::Integer) where T
+function divexact(A::SRow{T}, b::Integer; check::Bool=true) where T
   if length(A.values) == 0
     return deepcopy(A)
   end
-  return divexact(A, base_ring(A)(b))
+  return divexact(A, base_ring(A)(b); check=check)
 end
 
 ################################################################################
@@ -723,7 +721,7 @@ end
 @doc raw"""
     sparse_row(A::MatElem)
 
-Convert `A` to a sparse row. 
+Convert `A` to a sparse row.
 `nrows(A) == 1` must hold.
 """
 function sparse_row(A::MatElem)

@@ -1,5 +1,3 @@
-export conductor, is_conductor, norm_group, maximal_abelian_subfield, genus_field, content_ideal, subfields, is_normal, is_central, normal_closure
-
 ########################################################################################
 #
 #  Tools for conductor
@@ -1679,7 +1677,7 @@ function lorenz_module_pp(k::AnticNumberField, p::Int, l::Int; containing=false)
   end
   Q, mQ = quo(c, [mc\P for P = S])
 
-  a, _ = find_gens(pseudo_inv(mc)*mQ, PrimesSet(degree(k), -1), p*numerator(discriminant(Ka)))
+  a, _ = find_gens(pseudo_inv(mc)*mQ, PrimesSet(degree(k), -1), p*numerator(discriminant(Ka)*discriminant(k)))
   S = Set(intersect_nonindex(C.mp[2], P) for P = a)
   union!(S, s)
 

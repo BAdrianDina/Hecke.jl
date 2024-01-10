@@ -9,7 +9,7 @@
 
 ## About
 
-Hecke is a software package for algebraic number theory maintained by Claus Fieker, Tommy Hofmann and Carlo Sircana.
+Hecke is a software package for algebraic number theory maintained by Claus Fieker and Tommy Hofmann.
 It is written in [julia](https://www.julialang.org) and is based on the computer algebra packages [Nemo](https://github.com/Nemocas/Nemo.jl) and [AbstractAlgebra](https://github.com/Nemocas/AbstractAlgebra.jl).
 Hecke is part of the [OSCAR](https://www.oscar-system.org/) project and the development is supported by the Deutsche Forschungsgemeinschaft DFG within the Collaborative Research Center TRR 195.
 
@@ -69,28 +69,32 @@ Here is a quick example of using Hecke:
 
 ```julia
 julia> using Hecke
-...
 
 Welcome to
 
-  _    _           _
- | |  | |         | |
- | |__| | ___  ___| | _____
- |  __  |/ _ \/ __| |/ / _ \
- | |  | |  __/ (__|   <  __/
- |_|  |_|\___|\___|_|\_\___|
+    _    _           _
+   | |  | |         | |
+   | |__| | ___  ___| | _____
+   |  __  |/ _ \/ __| |/ / _ \
+   | |  | |  __/ (__|   <  __/
+   |_|  |_|\___|\___|_|\_\___|
 
-Version 0.10.12...
- ... which comes with absolutely no warrant whatsoever
-(c) 2015-2019 by Claus Fieker, Tommy Hofmann and Carlo Sircana
+Version 0.22.8...
+ ... which comes with absolutely no warranty whatsoever
+(c) 2015-2023 by Claus Fieker, Tommy Hofmann and Carlo Sircana
+
 
 julia> Qx, x = polynomial_ring(FlintQQ, "x");
+
 julia> f = x^3 + 2;
+
 julia> K, a = number_field(f, "a");
+
 julia> O = maximal_order(K);
+
 julia> O
-Maximal order of Number field over Rational Field with defining polynomial x^3 + 2
-with basis [1,a,a^2]
+Maximal order of Number field of degree 3 over QQ
+with basis nf_elem[1, a, a^2]
 ```
 
 ## Documentation

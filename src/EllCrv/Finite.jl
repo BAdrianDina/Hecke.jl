@@ -34,10 +34,6 @@
 #
 ################################################################################
 
-export hasse_interval, order, order_via_exhaustive_search, order_via_bsgs, order_via_legendre,
-       order_via_schoof, trace_of_frobenius, rand, elem_order_bsgs, is_supersingular,
-       is_ordinary, is_probable_supersingular, supersingular_polynomial
-
 ################################################################################
 #
 #  Random point
@@ -1556,7 +1552,7 @@ julia> order(E)
 100
 ```
 """
-@attr fmpz function order(E::EllCrv{T}) where T<:FinFieldElem
+@attr ZZRingElem function order(E::EllCrv{T}) where T<:FinFieldElem
   R = base_field(E)
   p = characteristic(R)
   q = order(R)
@@ -1580,7 +1576,7 @@ end
 function _order_factored(E::EllCrv{<:FinFieldElem})
   return get_attribute!(E, :order_factored) do
     return factor(order(E))
-  end::Fac{fmpz}
+  end::Fac{ZZRingElem}
 end
 
 @doc raw"""
@@ -1775,16 +1771,16 @@ Return the polynomial whose roots correspond to j-invariants
 of supersingular elliptic curves of characteristic p.
 """
 function supersingular_polynomial(p::IntegerUnion)
-  p = ZZRingElem(p)
-  K = GF(p)
-  KJ, J = polynomial_ring(GF(p), "J")
-  if p < 3
+  _p = ZZRingElem(p)
+  K = GF(_p)
+  KJ, J = polynomial_ring(K, "J")
+  if _p < 3
     return J
   end
 
-  m = divexact((p-1), 2)
-  KXT, (X, T) = polynomial_ring(K, ["X", "T"])
-  H = sum([binomial(m, i)^2 *T^i for i in (0:m)])
+  m = divexact((_p -1 ), 2)
+  KXT, (X, T) = polynomial_ring(K, ["X", "T"], cached = false)
+  H = sum(elem_type(KXT)[binomial(m, i)^2 *T^i for i in 0:m])
   F = T^2 * (T - 1)^2 * X - 256 * (T^2 - T + 1)^3
   R = resultant(F, H, 2)
   factors = factor(evaluate(R, [J, zero(KJ)]))
@@ -1816,7 +1812,7 @@ end
 # DOI: 10.1007/s00145-004-0315-8
 #
 #
-@attr Tuple{Vector{fmpz}, Vector{EllCrvPt{T}}} function _grp_struct_with_gens(E::EllCrv{T}) where {T <: FinFieldElem}
+@attr Tuple{Vector{ZZRingElem}, Vector{EllCrvPt{T}}} function _grp_struct_with_gens(E::EllCrv{T}) where {T <: FinFieldElem}
   N = order(E)
   K = base_field(E)
   # TODO:
@@ -1869,17 +1865,17 @@ Return a list of generators of the group of rational points on $E$.
 julia> E = elliptic_curve(GF(101, 2), [1, 2]);
 
 julia> gens(E)
-2-element Vector{EllCrvPt{fqPolyRepFieldElem}}:
- Point  (93*o + 10 : 22*o + 69 : 1)  of Elliptic curve with equation
+2-element Vector{EllCrvPt{FqFieldElem}}:
+ Point  (16*o + 42 : 88*o + 97 : 1)  of Elliptic curve with equation
 y^2 = x^3 + x + 2
- Point  (89*o + 62 : 14*o + 26 : 1)  of Elliptic curve with equation
+ Point  (88*o + 23 : 94*o + 22 : 1)  of Elliptic curve with equation
 y^2 = x^3 + x + 2
 
 julia> E = elliptic_curve(GF(101), [1, 2]);
 
 julia> gens(E)
-1-element Vector{EllCrvPt{fpFieldElem}}:
- Point  (50 : 69 : 1)  of Elliptic curve with equation
+1-element Vector{EllCrvPt{FqFieldElem}}:
+ Point  (85 : 58 : 1)  of Elliptic curve with equation
 y^2 = x^3 + x + 2
 ```
 """
@@ -1908,7 +1904,7 @@ GrpAb: Z/2 x Z/5200
 function abelian_group(E::EllCrv{U}) where {U <: FinFieldElem}
   _invdiv, _gens = _grp_struct_with_gens(E)
   if length(_gens) == 0
-    strct = fmpz[]
+    strct = ZZRingElem[]
     gens = elem_type(E)[]
   elseif length(_gens) == 1
     strct = copy(_invdiv)

@@ -32,10 +32,6 @@
 #
 ################################################################################
 
-export NfOrdQuoRing, NfOrdQuoRingElem, quo, *, -, ==, deepcopy, divrem,
-       gcd, inv, parent, show, divexact, isone, iszero, howell_form,
-       strong_echelon_form, triangularize, det, euclid, xxgcd, annihilator
-
 ################################################################################
 #
 #  Assertion
@@ -51,11 +47,6 @@ add_assertion_scope(:NfOrdQuoRing)
 ################################################################################
 
 function elem_type(::Type{AbsOrdQuoRing{S, T}}) where {S, T}
-  U = elem_type(S)
-  return AbsOrdQuoRingElem{S, T, U}
-end
-
-function elem_type(::AbsOrdQuoRing{S, T}) where {S, T}
   U = elem_type(S)
   return AbsOrdQuoRingElem{S, T, U}
 end

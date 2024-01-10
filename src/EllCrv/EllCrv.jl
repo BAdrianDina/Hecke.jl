@@ -34,13 +34,6 @@
 #
 ################################################################################
 
-export EllCrv, EllCrvPt
-
-export elliptic_curve, infinity, base_field, base_change, j_invariant,
-       elliptic_curve_from_j_invariant, is_finite, is_infinite, is_on_curve, +, *,
-       //, a_invars, b_invars, c_invars, equation, hyperelliptic_polynomials,
-       points_with_x_coordinate, division_points
-
 ################################################################################
 #
 #  Types
@@ -299,7 +292,7 @@ y^2 + x*y = x^3 + x + 1
 ```
 """
 function elliptic_curve(f::PolyRingElem{T}, h::PolyRingElem{T} = zero(parent(f)); check::Bool = true) where T
-  @req ismonic(f) "First polynomial must be monic"
+  @req is_monic(f) "First polynomial must be monic"
   @req degree(f) == 3 "First polynomial must be of degree 3"
   @req degree(h) <= 1 "Second polynomial must be of degree at most 1"
   R = base_ring(f)
@@ -326,7 +319,7 @@ Return an elliptic curve with the given $j$-invariant.
 
 ```jldoctest
 julia> K = GF(3)
-Finite field of characteristic 3
+Finite field of degree 1 over GF(3)
 
 julia> elliptic_curve_from_j_invariant(K(2))
 Elliptic curve with equation
@@ -774,10 +767,6 @@ end
 #  Element type
 #
 ################################################################################
-
-function elem_type(E::EllCrv{T}) where T
-  return EllCrvPt{T}
-end
 
 function elem_type(::Type{EllCrv{T}}) where T
   return EllCrvPt{T}
