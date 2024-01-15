@@ -1,9 +1,3 @@
-
-export rational_reconstruction, farey_lift, div, leading_coefficient,
-       trailing_coefficient, constant_coefficient, factor_mod_pk,
-       factor_mod_pk_init, hensel_lift, rres, rresx,
-       coefficients, cyclotomic_polynomial, is_cyclotomic_polynomial
-
 import Nemo: fmpz_mod_ctx_struct
 
 
@@ -418,7 +412,7 @@ function n_positive_roots(f::ZZPolyRingElem; multiplicities::Bool = false)
   if !multiplicities
     ffp = derivative(ff)
     g = gcd(ff, ffp)
-    if isconstant(g)
+    if is_constant(g)
       return _n_positive_roots_sf(f)
     else
       return n_positive_roots(divexact(ff, g))::Int
@@ -446,7 +440,7 @@ function _n_positive_roots_sf(f::ZZPolyRingElem)
   # Here a = 0
   _, f = remove(f, gen(parent(f)))
 
-  if isconstant(f)
+  if is_constant(f)
     # f = x^n * a, so no positive root
     return 0
   end
@@ -465,7 +459,7 @@ function n_real_roots(f::ZZPolyRingElem)
   ff = Hecke.Globals.Qx(f)
   ffp = derivative(ff)
   g = gcd(ff, ffp)
-  if isconstant(g)
+  if is_constant(g)
     return _n_real_roots_sf(f)
   else
     return n_real_roots(divexact(ff, g))::Int
@@ -730,7 +724,7 @@ function _roots(f::QQPolyRingElem, ::PosInf; prec::Int=64)
   g = squarefree_part(f)
   all_rts = _roots(g, prec)
   rl_rts = real.(filter(isreal, all_rts))
-  compl_rts = filter(x -> !isreal(x) && ispositive(imag(x)), all_rts)
+  compl_rts = filter(x -> !isreal(x) && is_positive(imag(x)), all_rts)
   @assert length(rl_rts) + 2 * length(compl_rts) == degree(g)
   return all_rts, rl_rts, compl_rts
 end
@@ -883,7 +877,7 @@ specified, return the `n`-th cyclotomic polynomial over the integers.
 
 ```jldoctest
 julia> F, _ = finite_field(5)
-(Finite field of characteristic 5, 1)
+(Finite field of degree 1 over GF(5), 0)
 
 julia> Ft, _ = F["t"]
 (Univariate polynomial ring in t over GF(5), t)

@@ -32,10 +32,6 @@
 #
 ################################################################################
 
-export NfAbsNS, NfAbsNSElem
-
-export is_simple, simple_extension
-
 @inline base_ring(K::NfAbsNS) = FlintQQ
 
 @inline base_field(K::NfAbsNS) = FlintQQ
@@ -817,9 +813,9 @@ function simple_extension(K::NfAbsNS; cached::Bool = true, check = true, simplif
   g = gens(K)
   if n == 1
     #The extension is already simple
-    f = to_unvariate(Globals.Qx, K.pol[1])
+    f = to_univariate(Globals.Qx, K.pol[1])
     Ka, a = number_field(f, "a", cached = cached, check = check)
-    mp = NfAbsToNfAbsNS(Ka, K, g[1], [a])
+    mp = hom(Ka, K, g[1], inverse = [a])
     return Ka, mp
   end
   pe = g[1]
@@ -1044,7 +1040,7 @@ function trace_assure(K::NfAbsNS)
     return
   end
   Qx, x = polynomial_ring(FlintQQ, cached = false)
-  K.traces = [polynomial_to_power_sums(Qx(f), total_degree(f)-1) for f = K.pol]
+  K.traces = Vector{QQFieldElem}[total_degree(f) == 1 ? QQFieldElem[] : polynomial_to_power_sums(Qx(f), total_degree(f)-1) for f = K.pol]
 end
 
 #= Idea

@@ -34,10 +34,6 @@
 #
 ################################################################################
 
-export is_torsion_point, torsion_points, torsion_structure, torsion_bound, pr_torsion_basis,
-       division_polynomial, division_polynomial_univariate, torsion_points_division_poly, order,
-       torsion_points_lutz_nagell
-
 ################################################################################
 #
 #  Order of a point
@@ -392,7 +388,7 @@ having found a basis that spans p^r points.
 """
 function pr_torsion_basis(E::EllCrv{T}, p, r = typemax(Int)) where T <: Union{nf_elem, QQFieldElem}
 
-  if !isprime(p)
+  if !is_prime(p)
     error("p should be a prime number")
   end
 

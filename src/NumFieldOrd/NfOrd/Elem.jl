@@ -32,11 +32,6 @@
 #
 ################################################################################
 
-export ==, +, -, *, ^, add!, conjugates_arb, conjugates_arb_log, discriminant,
-       divexact, elem_in_nf, coordinates, isone, iszero, minkowski_map, mod,
-       mul!, norm, one, parent, powermod, rand, rand!, representation_matrix,
-       show, trace, t2, zero
-
 ################################################################################
 #
 #  Deepcopy
@@ -290,8 +285,7 @@ end
 
 function powermod(a::NfAbsOrdElem, i::ZZRingElem, p::ZZRingElem)
 
-  #if contains_equation_order(parent(a))#This doesn't work!
-  if is_defining_polynomial_nice(nf(parent(a)))
+  if is_defining_polynomial_nice(nf(parent(a))) && contains_equation_order(parent(a))
     return powermod_fast(a, i, p)
   else
     return powermod_gen(a, i, p)

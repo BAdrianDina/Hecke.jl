@@ -1,5 +1,3 @@
-export matrix_algebra
-
 ################################################################################
 #
 #  Basic field access
@@ -17,8 +15,6 @@ coefficient_ring(A::AlgMat) = A.coefficient_ring
 basis(A::AlgMat) = A.basis
 
 has_one(A::AlgMat) = true
-
-elem_type(A::AlgMat{T, S}) where { T, S } = AlgMatElem{T, AlgMat{T, S}, S}
 
 elem_type(::Type{AlgMat{T, S}}) where { T, S } = AlgMatElem{T, AlgMat{T, S}, S}
 
@@ -59,6 +55,14 @@ function is_commutative(A::AlgMat)
     return A.is_commutative == 1
   end
   dcr = dim_of_coefficient_ring(A)
+  if degree(A) == 1
+    if is_commutative(base_ring(A))
+      A.is_commutative = 1
+      return true
+    end
+    A.is_commutative = 2
+    return false
+  end
   if dim(A) == degree(A)^2*dcr
     A.is_commutative = 2
     return false
@@ -219,6 +223,22 @@ function multiplication_table(A::AlgMat; copy::Bool = true)
   else
     return A.mult_table
   end
+end
+
+function denominator_of_multiplication_table(A::AlgMat)
+  get_attribute!(A, :denominator_of_multiplication_table) do
+    den = one(ZZ)
+    mt = multiplication_table(A)
+    d = degree(A)
+    for i in 1:d
+      for j in 1:d
+        for k in 1:d
+          den = lcm!(den, den, denominator(mt[i, j, k]))
+        end
+      end
+    end
+    return den
+  end::ZZRingElem
 end
 
 ################################################################################

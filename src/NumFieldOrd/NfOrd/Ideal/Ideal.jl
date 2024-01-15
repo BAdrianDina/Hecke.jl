@@ -32,17 +32,6 @@
 #
 ################################################################################
 
-export show, ideal
-
-export IdealSet, valuation,prime_decomposition_type, prime_decomposition,
-       prime_ideals_up_to, factor, divexact, is_ramified, anti_uniformizer,
-       uniformizer, is_coprime, conductor, colon, equation_order
-
-export NfOrdIdl
-
-export deepcopy, parent, order, basis, basis_matrix, basis_mat_inv, minimum, norm,
-       ==, in, +, *, intersect, lcm, idempotents, mod, pradical
-
 add_assertion_scope(:Rres)
 
 ################################################################################
@@ -61,7 +50,9 @@ function Base.deepcopy_internal(A::NfAbsOrdIdl, dict::IdDict)
   B = typeof(A)(order(A))
   for i in fieldnames(typeof(A))
     if isdefined(A, i)
-      if i == :valuation || i == :order
+      if i === :valuation
+        continue
+      elseif i === :order
         setfield!(B, i, getfield(A, i))
       else
         setfield!(B, i, Base.deepcopy_internal(getfield(A, i), dict))
@@ -96,8 +87,6 @@ end
 ################################################################################
 
 elem_type(::Type{NfOrdIdlSet}) = NfOrdIdl
-
-elem_type(::NfOrdIdlSet) = NfOrdIdl
 
 parent_type(::Type{NfOrdIdl}) = NfOrdIdlSet
 
@@ -266,23 +255,20 @@ checked whether $M$ defines an ideal (expensive). If `M_in_hnf` is set, then it 
 that $M$ is already in lower left HNF.
 """
 function ideal(O::NfAbsOrd, M::ZZMatrix; check::Bool = false, M_in_hnf::Bool = false)
-  !M_in_hnf ? x = _hnf(M, :lowerleft) : nothing #sub-optimal, but == relies on the basis being thus
-  #_trace_call(;print = true)
-  I = NfAbsOrdIdl(O, M)
+  x = !M_in_hnf ? _hnf(M, :lowerleft) : M #sub-optimal, but == relies on the basis being thus
+  I = NfAbsOrdIdl(O, x)
   # The compiler stopped liking this recursion??
   # if check
   #   J = ideal(O, basis(I))
   #   @assert J == I
   # end
-
   return I
 end
 
 function _ideal(O::NfAbsOrd, M::ZZMatrix, M_in_hnf::Bool = false)
-  !M_in_hnf ? x = _hnf(M, :lowerleft) : nothing #sub-optimal, but == relies on the basis being thus
+  x = !M_in_hnf ? _hnf(M, :lowerleft) : M #sub-optimal, but == relies on the basis being thus
   #_trace_call(;print = true)
-  I = NfAbsOrdIdl(O, M)
-
+  I = NfAbsOrdIdl(O, x)
   return I
 end
 
@@ -1976,7 +1962,7 @@ function _datum_for_reduction_non_maximal(Q::AbsOrdQuoRing)
     AQJ, AQJtoQJ, QJtoAQJ = abelian_group(QJ)
     AQQ, AQQtoQQ, QQtoAQQ = abelian_group(QQ)
     h = hom(AQJ, AQQ, [QQtoAQQ(mQQ(base_ring(QQ)(_elem_in_algebra(mQJ\AQJtoQJ(g))))) for g in gens(AQJ)])
-    return function(x) 
+    return function(x)
       if x isa FacElem
         y = _mod_fac_elem_maximal(x, QQ)
       else

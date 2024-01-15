@@ -1,21 +1,3 @@
-export *, +, absolute_basis, absolute_basis_matrix, ambient_space,
-       automorphism_group_generators, automorphism_group_order, bad_primes,
-       basis_matrix, basis_matrix_of_rational_span, can_scale_totally_positive,
-       coefficient_ideals, degree, diagonal, diagonal_of_rational_span,
-       discriminant, dual, fixed_field, fixed_ring, generators, gram_matrix_of_generators,
-       gram_matrix_of_rational_span, hasse_invariant, hermitian_lattice, intersect,
-       involution, is_definite, is_integral, is_isometric, is_local_norm, is_locally_isometric,
-       is_modular, is_negative_definite, is_positive_definite, is_rationally_isometric,
-       is_sublattice, is_sublattice_with_relations, jordan_decomposition, lattice,
-       local_basis_matrix, norm, normic_defect, pseudo_matrix, quadratic_lattice,
-       rank, rational_span, rescale, restrict_scalars, restrict_scalars_with_map, scale,
-       volume, witt_invariant, integer_lattice, trace_lattice_with_isometry,
-       trace_lattice_with_isometry_and_transfer_data, hermitian_structure,
-       hermitian_structure_with_transfer_data
-
-
-export HermLat, QuadLat
-
 # aliases for deprecation
 is_equivalent(U::AbstractLat, V::AbstractLat) = is_isometric(U, V)
 is_equivalent(U::AbstractLat, V::AbstractLat, p) = is_isometric(U, V, p)
@@ -305,8 +287,8 @@ function generators(L::AbstractLat; minimal::Bool = false)
     d = ncols(St)
     for i in 1:nrows(St)
       if base_ring(L) isa NfOrd
-        I = numerator(St.coeffs[i])
-        den = denominator(St.coeffs[i])
+        I = numerator(coefficient_ideals(St)[i])
+        den = denominator(coefficient_ideals(St)[i])
         _assure_weakly_normal_presentation(I)
         push!(v, T[K(I.gen_one)//den * matrix(St)[i, j] for j in 1:d])
         push!(v, T[K(I.gen_two)//den * matrix(St)[i, j] for j in 1:d])
@@ -387,7 +369,7 @@ the output is a hermitian (resp. quadratic) lattice.
 By default, `basis` is checked to be of full rank. This test can be disabled by setting
 `check` to false.
 """
-lattice(V::AbstractSpace, basis::MatElem ; check::Bool = true) = lattice(V, pseudo_matrix(basis), check = check)
+lattice(V::AbstractSpace, basis::MatElem ; check::Bool = true) = lattice(V, pseudo_matrix(basis); check)
 
 @doc raw"""
     lattice(V::AbstractSpace, gens::Vector) -> AbstractLat
@@ -398,16 +380,16 @@ is a hermitian (resp. quadratic) lattice.
 
 If `gens` is empty, the function returns the zero lattice in `V`.
 """
-function lattice(V::Hecke.AbstractSpace, gens::Vector)
-  if length(gens) == 0
+function lattice(V::Hecke.AbstractSpace, _gens::Vector)
+  if length(_gens) == 0
     pm = pseudo_matrix(matrix(base_ring(V), 0, dim(V), []))
-    return lattice(V, pm, check = false)
+    return lattice(V, pm; check = false)
   end
-  @assert length(gens[1]) > 0
-  @req all(v -> length(v) == length(gens[1]), gens) "All vectors in gens must be of the same length"
-  @req length(gens[1]) == dim(V) "Incompatible arguments: the length of the elements of gens must correspond to the dimension of V"
+  @assert length(_gens[1]) > 0
+  @req all(v -> length(v) == length(_gens[1]), _gens) "All vectors in gens must be of the same length"
+  @req length(_gens[1]) == dim(V) "Incompatible arguments: the length of the elements of gens must correspond to the dimension of V"
   F = base_ring(V)
-  gens = [map(F, v) for v in gens]
+  gens = [map(F, v) for v in _gens]
   M = zero_matrix(F, length(gens), length(gens[1]))
   for i=1:nrows(M)
     for j=1:ncols(M)
@@ -420,7 +402,7 @@ function lattice(V::Hecke.AbstractSpace, gens::Vector)
     i += 1
   end
   pm = sub(pm, i:nrows(pm), 1:ncols(pm))
-  L = lattice(V, pm, check = false)
+  L = lattice(V, pm; check = false)
   L.generators = gens
   return L
 end
@@ -432,7 +414,7 @@ Given an ambient space `V`, return the lattice with the standard basis
 matrix. If `V` is hermitian (resp. quadratic) then the output is a hermitian
 (resp. quadratic) lattice.
 """
-lattice(V::AbstractSpace) = lattice(V, identity_matrix(base_ring(V), rank(V)), check = false)
+lattice(V::AbstractSpace) = lattice(V, identity_matrix(base_ring(V), rank(V)); check = false)
 
 ################################################################################
 #
@@ -449,7 +431,7 @@ If `minimal == true`, then a minimal generating set is used. Note that computing
 minimal generators is expensive.
 """
 function gram_matrix_of_generators(L::AbstractLat; minimal::Bool = false)
-  m = generators(L, minimal = minimal)
+  m = generators(L; minimal)
   M = matrix(nf(base_ring(L)), m)
   return gram_matrix(ambient_space(L), M)
 end
@@ -470,7 +452,7 @@ function discriminant(L::AbstractLat)
   d = det(gram_matrix_of_rational_span(L))
   v = involution(L)
   C = coefficient_ideals(L)
-  I = prod(C, init = one(base_field(L))*base_ring(L))
+  I = prod(C; init = one(base_field(L))*base_ring(L))
   return d * I * v(I)
 end
 
@@ -1145,7 +1127,7 @@ function trace_lattice_with_isometry_and_transfer_data(H::AbstractLat{T}; alpha:
   # This will correspond to multiplication by beta along the transfer
   iso = zero_matrix(QQ, 0, degree(Lres))
 
-  v = vec(zeros(QQ, 1, degree(Lres)))
+  v = zero_matrix(QQ, 1, degree(Lres))
 
   for i in 1:degree(Lres)
     v[i] = one(QQ)
@@ -1181,8 +1163,10 @@ function trace_lattice_with_isometry(H::HermLat, res::AbstractSpaceRes; beta::Fi
   @req maximal_order(E) == equation_order(E) "Equation order and maximal order must coincide"
 
   Lres = restrict_scalars(H, res)
+
   iso = zero_matrix(QQ, 0, degree(Lres))
-  v = vec(zeros(QQ, 1, degree(Lres)))
+
+  v = zero_matrix(QQ, 1, degree(Lres))
 
   for i in 1:degree(Lres)
     v[i] = one(QQ)
@@ -1204,22 +1188,12 @@ end
 # by b. This function requires f to be invertible, b to be have norm 1,
 # b and f must have the same (absolute) minimal polynomial and the number
 # of rows of f should be divisible by the absolute degree of the parent of b
-function _admissible_basis(f::QQMatrix, b::NfRelElem; check::Bool = true)
-  chi = absolute_minpoly(b)
-
-  if check
-    @assert norm(b) == 1
-    chi_f = minpoly(parent(chi), f)
-    @assert chi == chi_f
-    @assert divides(ncols(f), degree(chi))[1]
-  end
-
-  m = divexact(ncols(f), degree(chi))
-  _mb = absolute_representation_matrix(b)
-
+#
+# Here _mb is the asolute multiplication matrix of b and mb is a block diagonal
+# matrix consisting of an appropriate number of copies of _mb
+function _admissible_basis(f::QQMatrix, _mb::QQMatrix, mb::QQMatrix)
   # we look for a basis on which f acts blockwise
   # as multiplication by b along extension of scalars
-  mb = block_diagonal_matrix([_mb for i in 1:m])
   bca = Hecke._basis_of_commutator_algebra(f, _mb)
   @assert !is_empty(bca)
 
@@ -1262,8 +1236,8 @@ span of `L` is irreducible.
 """
 function hermitian_structure(L::ZZLat, f::QQMatrix; check::Bool = true,
                                                     ambient_representation::Bool = true,
-                                                    res = nothing,
-                                                    E = nothing)
+                                                    res::Union{Nothing, AbstractSpaceRes} = nothing,
+                                                    E::Union{Nothing, NfRel} = nothing)
 
   return hermitian_structure_with_transfer_data(L, f; check, ambient_representation, res, E)[1]
 end
@@ -1291,8 +1265,8 @@ span of `L` is irreducible.
 """
 function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::Bool = true,
                                                                         ambient_representation::Bool = true,
-                                                                        res = nothing,
-                                                                        E = nothing)
+                                                                        res::Union{Nothing, AbstractSpaceRes} = nothing,
+                                                                        E::Union{Nothing, NfRel} = nothing)
 
   # Since the minimal polynomial of f might not be irreducible, but the one
   # of its restriction to _L is, we are only concerned about _L inside
@@ -1300,9 +1274,9 @@ function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::B
   # "full rank version". Otherwise, we keep it as is and consider f as
   # acting on the ambient space (which is isometric to the rational span of _L)
   if rank(_L) != degree(_L)
-    L = integer_lattice(gram = gram_matrix(_L))
+    L = integer_lattice(;gram = gram_matrix(_L))
     if ambient_representation
-      ok, f = can_solve_with_solution(basis_matrix(_L), basis_matrix(_L)*f, side=:left)
+      ok, f = can_solve_with_solution(basis_matrix(_L), basis_matrix(_L)*f; side=:left)
       @req ok "Isometry does not restrict to L"
     end
   else
@@ -1323,7 +1297,7 @@ function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::B
     gram = gram_matrix(ambient_space(L))
     @req is_irreducible(minpoly(f)) "The minimal polynomial of f must be irreducible"
     @req f*gram*transpose(f) == gram "f does not define an isometry of the space of L"
-    @req divides(rank(L), n2)[1] "The degree of the minimal polynomial of f must divide the rank of L"
+    @req is_divisible_by(rank(L), n2) "The degree of the minimal polynomial of f must divide the rank of L"
   end
 
   # for regular users, `res` and `E` will always be `nothing`
@@ -1335,12 +1309,11 @@ function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::B
       E, b = cyclotomic_field_as_cm_extension(n)
     else
       Etemp, btemp = number_field(minpoly(f))
-      K, a = number_field(minpoly(btemp + inv(btemp)), "a", cached=false)
+      K, a = number_field(minpoly(btemp + inv(btemp)), "a"; cached=false)
       Kt, t = K["t"]
-      E, b = number_field(t^2-a*t+1, "b", cached=false)
+      E, b = number_field(t^2-a*t+1, "b"; cached=false)
     end
   else
-    @req E isa NfRel "E must be a relative number field"
     @req degree(E) == 2 "E must be a degree 2 extension of a number field"
     b = gen(E)
     chi = absolute_minpoly(b)
@@ -1360,14 +1333,14 @@ function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::B
     l = res.btop
     @assert l*f == mb*l
     BL = basis_matrix(L)
-    gene = Vector{elem_type(base_ring(W))}[res(vec(collect(BL[i, :]))) for i in 1:degree(L)]
+    gene = Vector{elem_type(base_ring(W))}[res(BL[i, :]) for i in 1:degree(L)]
     Lh = lattice(W, gene)
     return Lh, res
   end
 
   # here we get an "admissible basis", i.e. a nice basis on which
   # f acts as multiplication by b after extending scalars
-  l = _admissible_basis(f, b, check=false)
+  l = _admissible_basis(f, _mb, mb)
 
   # we construct the gram matrix of the hermitian space in which to extend the scalars.
   # For this we change the basis of the ambient space/rational span of L and
@@ -1377,7 +1350,6 @@ function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::B
   gram = matrix(zeros(E, m, m))
   s = involution(E)
   G = l*gram_matrix(ambient_space(L))*transpose(l)
-  v = zero_matrix(QQ, 1, rank(L))
   bs = absolute_basis(E)
   trace_mat = zero_matrix(QQ, n2, n2)
   for i in 1:n2
@@ -1388,13 +1360,9 @@ function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::B
 
   for i=1:m
     for j=1:m
-      vi = deepcopy(v)
-      vi[1,1+(i-1)*n2] = one(QQ)
-      vj = deepcopy(v)
-      vj[1,1+(j-1)*n2] = one(QQ)
-      a = matrix(QQ, 1, n2, [(vi*mb^k*G*transpose(vj))[1] for k in 0:n2-1])
+      a = reduce(hcat, view(mb^k, 1+(i-1)*n2, :)*view(G, :, 1+(j-1)*n2) for k in 0:n2-1)
       co = solve_left(trace_mat, a)
-      gram[i,j] = (co*bs)[1]
+      gram[i,j] = only(co*bs)
     end
   end
 
@@ -1411,7 +1379,7 @@ function hermitian_structure_with_transfer_data(_L::ZZLat, f::QQMatrix; check::B
   # once we have the map between the ambient spaces, it just remain to transfer
   # the lattice
   BL = basis_matrix(L)
-  gene = Vector{elem_type(E)}[res(vec(collect(BL[i, :]))) for i in 1:degree(L)]
+  gene = Vector{elem_type(E)}[res(BL[i, :]) for i in 1:degree(L)]
 
   Lh = lattice(W, gene)
   return Lh, res
@@ -1464,7 +1432,7 @@ end
 # per default, the are given with respect to the basis of the ambient space
 # if ambient_representation = true, they are given with respect to the coordinate
 # space/ambient space
-function assert_has_automorphisms(L::AbstractLat{<: NumField}; redo::Bool = false)
+function assert_has_automorphisms(L::AbstractLat{<: NumField}; redo::Bool = false, depth::Int = -1, bacher_depth::Int = 0)
 
   if !redo && isdefined(L, :automorphism_group_generators)
     return nothing
@@ -1484,8 +1452,7 @@ function assert_has_automorphisms(L::AbstractLat{<: NumField}; redo::Bool = fals
   # Make the Gram matrix small
   Glll, T = lll_gram_with_transform(ZgramL[1])
   Ttr = transpose(T)
-  ZgramLorig = ZgramL
-  ZgramL = copy(ZgramL)
+  ZgramLorig = copy(ZgramL)
   for i in 1:length(ZgramL)
     ZgramL[i] = T * ZgramL[i] * Ttr
   end
@@ -1493,13 +1460,13 @@ function assert_has_automorphisms(L::AbstractLat{<: NumField}; redo::Bool = fals
   # Create the automorphism context and compute generators as well as orders
 
   C = ZLatAutoCtx(ZgramL)
-  fl, Csmall = try_init_small(C)
+  fl, Csmall = try_init_small(C, depth = depth, bacher_depth = bacher_depth)
   if fl
     auto(Csmall)
     _gens, order = _get_generators(Csmall)
     gens = ZZMatrix[matrix(ZZ, g) for g in _gens]
   else
-    init(C)
+    init(C, depth = depth, bacher_depth = bacher_depth)
     auto(C)
     gens, order = _get_generators(C)
   end
@@ -1539,8 +1506,8 @@ function assert_has_automorphisms(L::AbstractLat{<: NumField}; redo::Bool = fals
   # Now translate to get the automorphisms with respect to basis_matrix(L)
   BmatL = basis_matrix_of_rational_span(L)
 
-  b1, s1 = can_solve_with_solution(BabsmatL, BmatL, side = :left)
-  b2, s2 = can_solve_with_solution(BmatL, BabsmatL, side = :left)
+  b1, s1 = can_solve_with_solution(BabsmatL, BmatL; side = :left)
+  b2, s2 = can_solve_with_solution(BmatL, BabsmatL; side = :left)
 
   t_gens = Vector{typeof(BmatL)}(undef, length(gens))
 
@@ -1574,19 +1541,24 @@ end
 ################################################################################
 
 @doc raw"""
-    automorphism_group_generators(L::AbstractLat; ambient_representation::Bool = true)
+    automorphism_group_generators(L::AbstractLat; ambient_representation::Bool = true,
+                                                  depth::Int = -1, bacher_depth::Int = 0)
                                                           -> Vector{MatElem}
 
 Given a definite lattice `L`, return generators for the automorphism group of `L`.
 If `ambient_representation == true` (the default), the transformations are represented
 with respect to the ambient space of `L`. Otherwise, the transformations are represented
 with respect to the (pseudo-)basis of `L`.
+
+Setting the parameters `depth` and `bacher_depth` to a positive value may improve
+performance. If set to `-1` (default), the used value of `depth` is chosen
+heuristically depending on the rank of `L`. By default, `bacher_depth` is set to `0`.
 """
-automorphism_group_generators(L::AbstractLat; ambient_representation::Bool = true)
+automorphism_group_generators(L::AbstractLat; ambient_representation::Bool = true, depth::Int = -1, bacher_depth::Int = 0)
 
-function automorphism_group_generators(L::AbstractLat; ambient_representation::Bool = true, check = false)
+function automorphism_group_generators(L::AbstractLat; ambient_representation::Bool = true, check = false, depth::Int = -1, bacher_depth::Int = 0)
 
-  assert_has_automorphisms(L)
+  assert_has_automorphisms(L, depth = depth, bacher_depth = bacher_depth)
 
   gens = L.automorphism_group_generators
 
@@ -1626,14 +1598,18 @@ end
 ################################################################################
 
 @doc raw"""
-    automorphism_group_order(L::AbstractLat) -> Int
+    automorphism_group_order(L::AbstractLat; depth::Int = -1, bacher_depth::Int = 0) -> Int
 
 Given a definite lattice `L`, return the order of the automorphism group of `L`.
-"""
-automorphism_group_order(L::AbstractLat; redo::Bool = false)
 
-function automorphism_group_order(L::AbstractLat; redo::Bool = false)
-  assert_has_automorphisms(L, redo = redo)
+Setting the parameters `depth` and `bacher_depth` to a positive value may improve
+performance. If set to `-1` (default), the used value of `depth` is chosen
+heuristically depending on the rank of `L`. By default, `bacher_depth` is set to `0`.
+"""
+automorphism_group_order(L::AbstractLat; redo::Bool = false, depth::Int = -1, bacher_depth::Int = 0)
+
+function automorphism_group_order(L::AbstractLat; redo::Bool = false, depth::Int = -1, bacher_depth::Int = 0)
+  assert_has_automorphisms(L; redo, depth = depth, bacher_depth = bacher_depth)
   return L.automorphism_group_order
 end
 
@@ -1644,15 +1620,20 @@ end
 ################################################################################
 
 @doc raw"""
-    is_isometric(L::AbstractLat, M::AbstractLat) -> Bool
+    is_isometric(L::AbstractLat, M::AbstractLat; depth::Int = -1, bacher_depth::Int = 0) -> Bool
 
 Return whether the lattices `L` and `M` are isometric.
+
+Setting the parameters `depth` and `bacher_depth` to a positive value may improve
+performance. If set to `-1` (default), the used value of `depth` is chosen
+heuristically depending on the rank of `L`. By default, `bacher_depth` is set to `0`.
 """
-is_isometric(L::AbstractLat, M::AbstractLat) = is_isometric_with_isometry(L, M, ambient_representation=false)[1]
+is_isometric(L::AbstractLat, M::AbstractLat; depth::Int = -1, bacher_depth::Int = 0) = is_isometric_with_isometry(L, M; ambient_representation=false, depth = depth, bacher_depth = bacher_depth)[1]
 
 
 @doc raw"""
-    is_isometric_with_isometry(L::AbstractLat, M::AbstractLat; ambient_representation::Bool = true)
+    is_isometric_with_isometry(L::AbstractLat, M::AbstractLat; ambient_representation::Bool = true
+                                                               depth::Int = -1, bacher_depth::Int = 0)
                                                               -> (Bool, MatElem)
 
 Return whether the lattices `L` and `M` are isometric. If this is the case, the
@@ -1665,12 +1646,16 @@ matrices of the ambient spaces of `L` and `M` respectively. If
 to the (pseudo-)bases of `L` and `M`, that is, $T G_M T^t = G_L$ where $G_M$
 and $G_L$ are the Gram matrices of the (pseudo-)bases of `L` and `M`
 respectively.
+
+Setting the parameters `depth` and `bacher_depth` to a positive value may improve
+performance. If set to `-1` (default), the used value of `depth` is chosen
+heuristically depending on the rank of `L`. By default, `bacher_depth` is set to `0`.
 """
-is_isometric_with_isometry(L::AbstractLat, M::AbstractLat; ambient_representation::Bool = true) = throw(NotImplemented())
+is_isometric_with_isometry(L::AbstractLat, M::AbstractLat; ambient_representation::Bool = true, depth::Int = -1, bacher_depth::Int = 0) = throw(NotImplemented())
 
 
 function is_isometric_with_isometry(L::AbstractLat{<: NumField}, M::AbstractLat{<: NumField};
-                                            ambient_representation::Bool = true)
+                                            ambient_representation::Bool = true, depth::Int = -1, bacher_depth::Int = 0)
   V = ambient_space(L)
   W = ambient_space(M)
   E = base_ring(V)
@@ -1705,19 +1690,19 @@ function is_isometric_with_isometry(L::AbstractLat{<: NumField}, M::AbstractLat{
     ZgramMsmall[i] = TM * ZgramM[i] * TMtr
   end
 
-  fl, CLsmall, CMsmall = _try_iso_setup_small(ZgramLsmall, ZgramMsmall)
+  fl, CLsmall, CMsmall = _try_iso_setup_small(ZgramLsmall, ZgramMsmall, depth = depth, bacher_depth = bacher_depth)
   if fl
     b, _T = isometry(CLsmall, CMsmall)
     T = matrix(FlintZZ, _T)
   else
-    CL, CM = _iso_setup(ZgramLsmall, ZgramMsmall)
+    CL, CM = _iso_setup(ZgramLsmall, ZgramMsmall, depth = depth, bacher_depth = bacher_depth)
     b, T = isometry(CL, CM)
   end
 
   if b
     T = change_base_ring(FlintQQ, inv(TL)*T*TM)
-    fl, s1 = can_solve_with_solution(BabsmatL, basis_matrix_of_rational_span(L), side = :left)
-    fl, s2 = can_solve_with_solution(basis_matrix_of_rational_span(M), BabsmatM, side = :left)
+    fl, s1 = can_solve_with_solution(BabsmatL, basis_matrix_of_rational_span(L); side = :left)
+    fl, s2 = can_solve_with_solution(basis_matrix_of_rational_span(M), BabsmatM; side = :left)
     T = s1 * change_base_ring(E, T) * s2
     @hassert :Lattice 1 T * gram_matrix(rational_span(M)) *
                             _map(transpose(T), involution(L)) ==
@@ -1752,7 +1737,7 @@ function maximal_sublattices(L::AbstractLat, p; use_auto::Bool = false,
                                            callback = false, max = inf)
   @req base_ring(L) == order(p) "Incompatible arguments: p must be an ideal in the base ring of L"
 
-  B = local_basis_matrix(L, p, type = :submodule)
+  B = local_basis_matrix(L, p; type = :submodule)
   full_rank = rank(matrix(L.pmat)) == Hecke.max(nrows(L.pmat), ncols(L.pmat))
   n = nrows(B)
   R = base_ring(L)
@@ -1783,7 +1768,7 @@ function maximal_sublattices(L::AbstractLat, p; use_auto::Bool = false,
   E = Int[]
   for i in 1:length(Ls)
     if use_auto
-      m = map_entries(y -> hext\y, (kernel(matrix(Ls[i][1]), side = :left)[2]))
+      m = map_entries(y -> hext\y, (kernel(matrix(Ls[i][1]); side = :left)[2]))
     else
       m = map_entries(y -> hext\y, Ls[i])
     end
@@ -1815,7 +1800,7 @@ function minimal_superlattices(L::AbstractLat, p; use_auto::Bool = false,
                                              callback = false, max = inf)
   @req base_ring(L) == order(p) "Incompatible arguments: p must be an ideal in the base ring of L"
 
-  B = local_basis_matrix(L, p, type = :submodule)
+  B = local_basis_matrix(L, p; type = :submodule)
   full_rank = rank(matrix(L.pmat)) == Hecke.max(nrows(L.pmat), ncols(L.pmat))
   n = nrows(B)
   R = base_ring(L)
@@ -2004,17 +1989,25 @@ end
     is_maximal_integral(L::AbstractLat, p::NfOrdIdl) -> Bool, AbstractLat
 
 Given a lattice `L` and a prime ideal `p` of the fixed ring $\mathcal O_K$ of
-`L`, return whether the completion of `L` at `p` is maximal integral. If it is
-not the case, the second returned value is a lattice in the ambient space of `L`
-whose completion at `p` is a minimal overlattice of $L_p$.
+`L`, return whether the completion of `L` at `p` has integral norm and that `L` has no
+proper overlattice satisfying this property.
+
+If the norm of `L` is not integral at `p`, the second output is `L` by default.
+Otherwise, either `L` is maximal at `p` and the second output is `L`, or the
+second output is a lattice `M` in the ambient space of `L` whose completion
+at `p` is a minimal overlattice of $L_p$ with integral norm.
 """
 is_maximal_integral(::AbstractLat, p)
 
 @doc raw"""
     is_maximal_integral(L::AbstractLat) -> Bool, AbstractLat
 
-Given a lattice `L`, return whether `L` is maximal integral. If it is not,
-the second returned value is a minimal overlattice of `L` with integral norm.
+Given a lattice `L`, return whether `L` has integral norm and has no proper
+overlattice satisfying this property.
+
+If the norm of `L` is not integral, the second output is `L` by default.
+Otherwise, either `L` is maximal and the second output is `L`, or the second
+output is a minimal overlattice `M` of `L` with integral norm.
 """
 is_maximal_integral(::AbstractLat)
 
@@ -2022,10 +2015,12 @@ is_maximal_integral(::AbstractLat)
     is_maximal(L::AbstractLat, p::NfOrdIdl) -> Bool, AbstractLat
 
 Given a lattice `L` and a prime ideal `p` in the fixed ring $\mathcal O_K$ of
-`L`, check whether the norm of $L_p$ is integral and return whether `L` is maximal
-at `p`. If it is locally integral but not locally maximal, the second returned value
-is a lattice in the same ambient space of `L` whose completion at `p` has integral norm
-and is a proper overlattice of $L_p$.
+`L` such that the norm of $L_p$ is integral, return whether `L` is maximal
+integral at `p`.
+
+If `L` is locally maximal at `p`, the second output is `L`, otherwise it is
+a lattice `M` in the same ambient space of `L` whose completion at `p` has
+integral norm and is a proper overlattice of $L_p$.
 """
 is_maximal(::AbstractLat, p)
 
@@ -2033,16 +2028,17 @@ is_maximal(::AbstractLat, p)
     maximal_integral_lattice(L::AbstractLat, p::NfOrdIdl) -> AbstractLat
 
 Given a lattice `L` and a prime ideal `p` of the fixed ring $\mathcal O_K$ of
-`L`, return a lattice `M` in the ambient space of `L` which is maximal integral
-at `p` and which agrees with `L` locally at all the places different from `p`.
+`L` such that the norm of $L_p$ is integral, return a lattice `M` in the
+ambient space of `L` which is maximal integral at `p` and which agrees
+with `L` locally at all the places different from `p`.
 """
 maximal_integral_lattice(::AbstractLat, p)
 
 @doc raw"""
     maximal_integral_lattice(L::AbstractLat) -> AbstractLat
 
-Given a lattice `L`, return a lattice `M` in the ambient space of `L` which
-is maximal integral and which contains `L`.
+Given a lattice `L` with integral norm, return a maximal integral overlattice
+`M` of `L`.
 """
 maximal_integral_lattice(::AbstractLat)
 
@@ -2076,7 +2072,7 @@ function primitive_closure(M::AbstractLat, N::AbstractLat)
   Nres = restrict_scalars(N, f)
   Lres = primitive_closure(Mres, Nres)
   B = basis_matrix(Lres)
-  B2 = [f(vec(collect(B[i,:]))) for i in 1:nrows(B)]
+  B2 = [f(B[i,:]) for i in 1:nrows(B)]
   return lattice(ambient_space(M), B2)
 end
 

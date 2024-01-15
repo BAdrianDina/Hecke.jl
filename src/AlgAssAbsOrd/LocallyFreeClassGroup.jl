@@ -1,5 +1,3 @@
-export locally_free_class_group, locally_free_class_group_with_disc_log
-
 ################################################################################
 #
 #  Locally free class group
@@ -334,8 +332,8 @@ function _unit_group_generators(A::AlgMat{<:FinFieldElem})
     for i in 2:d
       g2[i, i - 1] = -1
     end
-    @assert isunit(det(g1))
-    @assert isunit(det(g2))
+    @assert is_unit(det(g1))
+    @assert is_unit(det(g2))
     push!(res, g1, g2)
   end
   return map(A, res)
@@ -448,7 +446,22 @@ mutable struct DiscLogLocallyFreeClassGroup{S, T} <: Map{S, T, HeckeMap, DiscLog
   end
 end
 
-#function (f::DiscLogLocallyFreeClassGroup)(A::AlgAssAbsOrdIdl)
+function image(m::DiscLogLocallyFreeClassGroup, I::ModAlgAssLat)
+  V = I.V
+  O = I.base_ring
+  @req order(domain(m)) === O "Order of lattice and locally free class group must be identical"
+  A = algebra(V)
+  Areg = regular_module(A)
+  AregToA = x -> A(coordinates(x))
+  fl, VToAreg = is_isomorphic_with_isomorphism(V, Areg)
+  if !fl
+    error("Ambient module of lattice must be free of rank one")
+  end
+  Ibmat = basis_matrix(I)
+  II = ideal_from_lattice_gens(A, O, [AregToA(VToAreg(V(_eltseq(Ibmat[i, :])))) for i in 1:nrows(Ibmat)])
+  return m(II)
+end
+
 function image(m::DiscLogLocallyFreeClassGroup, I::AlgAssAbsOrdIdl)
   O = order(I)
   A = algebra(O)
@@ -466,8 +479,12 @@ function image(m::DiscLogLocallyFreeClassGroup, I::AlgAssAbsOrdIdl)
   @assert order(I) === order(domain(m))
 
   # Bley, Wilson: "Computations in relative algebraic K-groups"
+
+  # The ideal must be principal, so let's do this
+  d = denominator(I, O)
+  I = d * I
+
   n = norm(I)
-  @assert isone(denominator(n)) "Ideal is not integral"
   primes = collect(keys(factor(numerator(n)).fac))
   C = codomain(RtoC)
   c = id(C)
@@ -535,6 +552,8 @@ function image(m::DiscLogLocallyFreeClassGroup, I::AlgAssAbsOrdIdl)
         push!(exps, v)
       end
       b = FacElem(bases, exps)
+      # simplify! makes this work with the ray class group
+      simplify!(b)
       elts_in_R[j] = mR.groups_in_number_fields[j][2]\b
     end
 

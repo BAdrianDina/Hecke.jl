@@ -7,7 +7,7 @@
 # We iterate through K by adding 1 in the prime field case and by multiplying
 # with a primitive element in the general case.
 
-function LineEnumCtx(K::T, n) where {T}
+function LineEnumCtx(K::T, n::Int) where {T}
   a = primitive_element(K)
   v = Vector{elem_type(K)}(undef, n)
   for i in 1:n
@@ -16,7 +16,7 @@ function LineEnumCtx(K::T, n) where {T}
   depth = n + 1
   dim = n
   q = order(K)
-  length = divexact(q^n - 1, q - 1)
+  length = divexact(BigInt(q)^n - 1, q - 1)
   return LineEnumCtx{T, elem_type(T)}(K, a, dim, depth, v, length)
 end
 
@@ -29,7 +29,7 @@ function LineEnumCtx(K::T, n::Int) where {T <: Union{fpField, FpField}}
   depth = n + 1
   dim = n
   q = order(K)
-  length = divexact(q^n - 1, q - 1)
+  length = divexact(BigInt(q)^n - 1, q - 1)
   return LineEnumCtx{T, elem_type(T)}(K, a, dim, depth, v, length)
 end
 
@@ -58,11 +58,25 @@ Base.length(P::LineEnumCtx) = P.length
 
 Base.eltype(::Type{LineEnumCtx{T, S}}) where {T, S} = Vector{S}
 
+base_field(P::LineEnumCtx) = P.K
+
 depth(P::LineEnumCtx) = P.depth
 
 dim(P::LineEnumCtx) = P.dim
 
 primitive_element(P::LineEnumCtx) = P.a
+
+function Base.rand(P::LineEnumCtx)
+  K = base_field(P)
+  n = dim(P)
+  v = rand(K, n)
+  while iszero(v)
+    v = rand(K, n)
+  end
+  j = findfirst(!iszero, v)
+  map!(x -> x*inv(v[j]), v, v)
+  return v
+end
 
 ################################################################################
 #
@@ -296,7 +310,7 @@ function line_orbits(G::Vector{FqPolyRepMatrix})
     let GFp = GFp
       fp = map_coefficients(a -> GFp(a.data), f, parent = GFpx)
     end
-    FF, aa = FlintFiniteField(fp, "aa", cached = false)
+    FF, aa = Native.finite_field(fp, "aa", cached = false)
     GG = Vector{dense_matrix_type(FF)}(undef, length(G))
     for i in 1:length(G)
       GG[i] = map_entries(b -> sum(coeff(b, i) * aa^i for i in 0:(d-1)), G[i])::dense_matrix_type(FF)

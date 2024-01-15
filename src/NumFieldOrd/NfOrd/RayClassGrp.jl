@@ -1,5 +1,3 @@
-export ray_class_group, narrow_class_group, MapRayClassGrp
-
 add_verbosity_scope(:RayFacElem)
 add_assertion_scope(:RayFacElem)
 
@@ -197,6 +195,7 @@ function class_as_ray_class(C::GrpAbFinGen, mC::MapClassGrp, exp_class::Function
     local expo_map
     let mQ = mQ, exp_class = exp_class
       function expo_map(el::GrpAbFinGenElem)
+        @assert parent(el) === codomain(mQ)
         return exp_class(mQ\el)
       end
     end
@@ -237,8 +236,9 @@ function empty_ray_class(m::NfOrdIdl)
   X = abelian_group(Int[])
 
   local exp
-  let O = O
+  let O = O, X = X
     function exp(a::GrpAbFinGenElem)
+      @assert parent(a) === X
       return FacElem(Dict(ideal(O,1) => ZZRingElem(1)))
     end
   end
@@ -478,8 +478,9 @@ function n_part_class_group(mC::Hecke.MapClassGrp, n::Integer)
   if is_coprime(exponent(C), n)
     G = abelian_group(ZZRingElem[])
     local exp1
-    let O = O
+    let O = O, G = G
       function exp1(a::GrpAbFinGenElem)
+        @assert parent(a) === G
         return ideal(O, one(O))
       end
     end
@@ -507,6 +508,7 @@ function n_part_class_group(mC::Hecke.MapClassGrp, n::Integer)
   local exp2
   let O = O, G = G
     function exp2(a::GrpAbFinGenElem)
+      @assert parent(a) === G
       new_coeff = zero_matrix(FlintZZ, 1, ngens(C))
       for i = 1:ngens(G)
         new_coeff[1, i+ind-1] = a[i]*diff
@@ -909,6 +911,7 @@ function ray_class_group(m::NfOrdIdl, inf_plc::Vector{<:InfPlc} = Vector{InfPlc{
   local expo
   let C = C, O = O, groups_and_maps = groups_and_maps, exp_class = exp_class, eH = eH, H = H, K = K, Dgens = Dgens, X = X, p = p
     function expo(a::GrpAbFinGenElem)
+      @assert parent(a) === X
       b = GrpAbFinGenElem(C, sub(a.coeff, 1:1, 1:ngens(C)))
       res = exp_class(b)
       for i = 1:nG
@@ -978,6 +981,7 @@ function ray_class_groupQQ(O::NfOrd, modulus::Int, inf_plc::Bool, n_quo::Int)
     end
 
     function expon1(a::GrpAbFinGenElem)
+      @assert parent(a) === domain(mU)
       x=mU(a)
       return FacElem(Dict{NfOrdIdl, ZZRingElem}(ideal(O,lift(x)) => 1))
     end
@@ -997,6 +1001,7 @@ function ray_class_groupQQ(O::NfOrd, modulus::Int, inf_plc::Bool, n_quo::Int)
     end
 
     function expon2(a::GrpAbFinGenElem)
+      @assert parent(a) === domain(mU)
       x=mU(a)
       return FacElem(Dict{NfOrdIdl, ZZRingElem}(ideal(O,lift(x)) => 1))
     end
@@ -1016,6 +1021,7 @@ function ray_class_groupQQ(O::NfOrd, modulus::Int, inf_plc::Bool, n_quo::Int)
     end
 
     function expon(a::GrpAbFinGenElem)
+      @assert parent(a) === codomain(mQ)
       x=mU(mQ\a)
       return FacElem(Dict{NfOrdIdl, ZZRingElem}(ideal(O,x) => 1))
     end

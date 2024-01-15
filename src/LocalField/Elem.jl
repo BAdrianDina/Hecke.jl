@@ -87,7 +87,6 @@ end
 
 parent(a::LocalFieldElem) = a.parent
 
-parent_type(a::LocalFieldElem{S, T}) where {S <: FieldElem, T <: LocalFieldParameter} = LocalField{S, T}
 parent_type(::Type{LocalFieldElem{S, T}}) where {S <: FieldElem, T <: LocalFieldParameter} = LocalField{S, T}
 
 ################################################################################
@@ -173,7 +172,7 @@ end
 #
 ################################################################################
 
-iszero(a::LocalFieldElem) = iszero(a.data) 
+iszero(a::LocalFieldElem) = iszero(a.data)
 
 #in ramified fields the generator is the uniformizer and has valuation 1
 # precision is measured in powers of a uniformizer, but the uniformizer
@@ -305,7 +304,7 @@ end
 @doc raw"""
     valuation(a::LocalFieldElem) -> QQFieldElem
 
-The valuation of $a$, normalized so that $v(p) = 1$. Scale by the 
+The valuation of $a$, normalized so that $v(p) = 1$. Scale by the
 `absolute_ramification_index` to get a surjection onto ZZ.
 """
 function valuation(a::LocalFieldElem{S, T}) where {S <: FieldElem, T <: LocalFieldParameter}
@@ -635,15 +634,15 @@ end
 
 function uniformizer(L::LocalField, v::Int; prec::Int = 20)  #precision????
   if v > 0
-    return setprecision(L, prec) do 
+    return setprecision(L, prec) do
       uniformizer(L)^v
     end
   end
- 
+
   if !isa(L, LocalField{<:Any, EisensteinLocalField})
     return L(uniformizer(base_field(L), v, prec = prec))
   end
-  
+
   #possibly compute the pi^v only for v mod e the complicated way, and scale
   #by prime number afterwards
   #also: find out abs and rel prec....
@@ -837,7 +836,7 @@ function _log_one_units(a::LocalFieldElem)
   return r
 end
 
-function divexact(a::LocalFieldElem, b::Union{Integer, ZZRingElem})
+function divexact(a::LocalFieldElem, b::Union{Integer, ZZRingElem}; check::Bool=true)
   iszero(a) && return a
   p = prime(parent(a))
   v = valuation(b, p)

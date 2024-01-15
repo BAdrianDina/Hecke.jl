@@ -17,6 +17,12 @@ y = joinpath(Hecke.pkgdir, "test", "$x.jl")
 #
 ################################################################################
 
+if "threads" in ARGS || get(ENV, "HECKE_TEST_THREADS", "false") in ["1", "true"]
+  @info "Running only threading tests with $(Threads.nthreads()): threads.jl"
+  include("threads.jl")
+  exit()
+end
+
 # Is short?
 short_test = false
 
@@ -115,8 +121,8 @@ end
 if fl === "true" && !no_parallel && !Sys.iswindows()
   isparallel = true
   # CPU_THREADS reports number of logical cores (including hyperthreading)
-  # So be pessimistic and divide by 2 on Linux (less memory?)
-  n_procs = div(Sys.CPU_THREADS, Sys.islinux() ? 2 : 1)
+  # So be pessimistic and divide by 2
+  n_procs = min(div(Sys.CPU_THREADS, 2), 1)
   if Sys.islinux()
     # there is not enough memory to support >= 2 jobs
     isparallel = false
@@ -132,7 +138,7 @@ end
 
 # Now collect the tests we want to run
 
-const test_exclude = ["setup.jl", "runtests.jl", "parallel.jl", "testdefs.jl", "Aqua.jl", "FieldFactory.jl"]
+const test_exclude = ["setup.jl", "runtests.jl", "parallel.jl", "testdefs.jl", "Aqua.jl", "FieldFactory.jl", "threads.jl"]
 
 test_directory = joinpath(@__DIR__)
 
@@ -298,11 +304,11 @@ else
   end
 
   # Run the doctests
-  if v"1.9.0" <= VERSION < v"1.10.0-"
-    @info "Running doctests (Julia version is 1.9)"
+  if v"1.10-" <= VERSION < v"1.11-"
+    @info "Running doctests (Julia version is 1.10)"
     DocMeta.setdocmeta!(Hecke, :DocTestSetup, :(using Hecke); recursive = true)
     doctest(Hecke)
   else
-    @info "Not running doctests (Julia version must be 1.9)"
+    @info "Not running doctests (Julia version must be 1.10)"
   end
 end

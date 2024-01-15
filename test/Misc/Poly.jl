@@ -21,8 +21,8 @@
 
     while p < 4096
       l = roots(ArbField(p, cached = false), f)
-      sgtpos = count(ispositive, l)
-      sgtneg = count(isnegative, l)
+      sgtpos = count(is_positive, l)
+      sgtneg = count(is_negative, l)
       sgtz = count(iszero, l)
       if sgtpos + sgtneg + sgtz != length(l)
         p *= 2
@@ -103,7 +103,7 @@ end
   Qx, x = QQ["x"]
   @test @inferred is_squarefree(x)
   @test @inferred is_squarefree(2*x^0)
-  @test @inferred is_squarefree(0*x^0)
+  @test @inferred !is_squarefree(0*x^0)
   @test @inferred !is_squarefree(2*x^2)
   @test @inferred is_squarefree(x * (x + 1))
   @test @inferred !is_squarefree(x * (x + 1)^2)
@@ -111,7 +111,7 @@ end
   Zx, x = ZZ["x"]
   @test @inferred is_squarefree(x)
   @test @inferred is_squarefree(2*x^0)
-  @test @inferred is_squarefree(0*x^0)
+  @test @inferred !is_squarefree(0*x^0)
   @test @inferred !is_squarefree(2*x^2)
   @test @inferred is_squarefree(x * (x + 1))
   @test @inferred !is_squarefree(x * (x + 1)^2)
@@ -120,7 +120,7 @@ end
   Fx, x = F["x"]
   @test @inferred is_squarefree(x)
   @test @inferred is_squarefree(2*x^0)
-  @test @inferred is_squarefree(0*x^0)
+  @test @inferred !is_squarefree(0*x^0)
   @test @inferred !is_squarefree(2*x^2)
   @test @inferred is_squarefree(x^3 - a)
   @test @inferred is_squarefree(2*x)

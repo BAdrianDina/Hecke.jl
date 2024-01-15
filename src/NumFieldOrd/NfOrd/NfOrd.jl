@@ -32,13 +32,6 @@
 #
 ################################################################################
 
-export ==, +, basis, basis_matrix, basis_mat_inv, contains_equation_order,
-       discriminant, degree, gen_index, EquationOrder, index,
-       is_equation_order, is_index_divisor, lll, lll_basis, nf,
-       minkowski_matrix, norm_change_const, Order, parent, different,
-       signature, trace_matrix, codifferent, ramified_primes,
-       reduced_discriminant
-
 ################################################################################
 #
 #  Make NfOrd fully working Nemo ring
@@ -46,8 +39,6 @@ export ==, +, basis, basis_matrix, basis_mat_inv, contains_equation_order,
 ################################################################################
 
 Nemo.parent_type(::Type{NfAbsOrdElem{S, T}}) where {S, T} = NfAbsOrd{S, T}
-
-Nemo.elem_type(::NfAbsOrd{S, T}) where {S, T} = NfAbsOrdElem{S, T}
 
 Nemo.elem_type(::Type{NfAbsOrd{S, T}}) where {S, T} = NfAbsOrdElem{S, T}
 
@@ -998,6 +989,10 @@ equation_order(M::NfAbsOrd) = equation_order(nf(M))
 # Via extends one may supply an order which will then be extended by the elements
 # in elt.
 function _order(K::S, elt::Vector{T}; cached::Bool = true, check::Bool = true, extends = nothing) where {S <: Union{NumField{QQFieldElem}, AbsAlgAss{QQFieldElem}}, T}
+  if dim(K) == 0
+    return Order(K, FakeFmpqMat(zero_matrix(ZZ, 0, 0), ZZ(1)), cached = cached, check = false)::order_type(K)
+  end
+
   elt = unique(elt)
   n = dim(K)
   is_comm = is_commutative(K)
@@ -1127,6 +1122,7 @@ function _order(K::S, elt::Vector{T}; cached::Bool = true, check::Bool = true, e
         end
         bas = elem_type(K)[ elem_from_mat_row(K, numerator(B, copy = false), i, denominator(B, copy = false)) for i in 1:nrows(B) ]
         start = 1
+        old_length = length(bas)
         if check && K isa NumField
           @assert isone(bas[1])
         end

@@ -152,10 +152,8 @@ function zero!(x::RelFinFieldElem)
   return x
 end
 
-elem_type(F::RelFinField{T}) where T = RelFinFieldElem{RelFinField{T}, dense_poly_type(T)}
-elem_type(::Type{RelFinField{T}}) where T  = RelFinFieldElem{RelFinField{T}, dense_poly_type(T)}
+elem_type(::Type{RelFinField{T}}) where T = RelFinFieldElem{RelFinField{T}, dense_poly_type(T)}
 
-parent_type(::RelFinFieldElem{S, T}) where {S, T} = S
 parent_type(::Type{RelFinFieldElem{S, T}}) where {S, T}  = S
 
 gen(F::RelFinField) = F(gen(parent(defining_polynomial(F))))
@@ -495,6 +493,15 @@ end
 
 function absolute_basis(F::T) where T <: FinField
   return powers(gen(F), degree(F)-1)
+end
+
+function absolute_basis(F::FqField)
+  return powers(Nemo._gen(F), absolute_degree(F) - 1)
+end
+
+function absolute_coordinates(x::FqFieldElem)
+  F = prime_field(parent(x))
+  return FqFieldElem[F(Nemo._coeff(x, i)) for i in 0:Nemo._degree(parent(x))-1]
 end
 
 function absolute_coordinates(x::FinFieldElem)

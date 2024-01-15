@@ -1,5 +1,10 @@
+import Nemo: is_cyclo_type
+import Nemo: is_embedded
+import Nemo: is_maxreal_type
+import Nemo: ZZModRing  # FIXME: remove if/once Nemo exports this
+include(joinpath(pathof(Nemo), "..", "Aliases.jl"))
+
 # make some Julia names compatible with our naming conventions
-@alias is_trivial istrivial
 @alias is_hermitian ishermitian
 
 # for backwards compatibility
@@ -145,9 +150,9 @@
 @alias isprimitive_root is_primitive_root
 @alias isprincipal is_principal
 @alias isprincipal_fac_elem is_principal_fac_elem
-@alias isprincipal_maximal is_principal_maximal
-@alias isprincipal_maximal_fac_elem is_principal_maximal_fac_elem
-@alias isprincipal_non_maximal is_principal_non_maximal
+#@alias isprincipal_maximal is_principal_maximal
+#@alias isprincipal_maximal_fac_elem is_principal_maximal_fac_elem
+#@alias isprincipal_non_maximal is_principal_non_maximal
 @alias ispseudo_hnf is_pseudo_hnf
 @alias isquadratic is_quadratic
 @alias isquadratic_type is_quadratic_type

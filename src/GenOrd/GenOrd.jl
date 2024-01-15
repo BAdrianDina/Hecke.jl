@@ -22,8 +22,6 @@
 # -  R = localization(k(x), degree), F = FunctionField
 # -  R = Z[x], F = FunctionField/ QQ(t)
 
-export integral_closure, extension_field
-
 import AbstractAlgebra: expressify
 
 ################################################################################
@@ -46,13 +44,9 @@ function elem_type(::Type{GenOrd{S, T}}) where {S, T}
   return GenOrdElem{elem_type(S), elem_type(T)}
 end
 
-elem_type(::O) where {O <: GenOrd} = elem_type(O)
-
 function parent_type(::Type{GenOrdElem{S, T}}) where {S, T}
   return GenOrd{parent_type(S), parent_type(T)}
 end
-
-parent_type(::OE) where {OE <: GenOrdElem} = parent_type(OE)
 
 # prepare for algebras, which are not domains
 is_domain_type(::Type{GenOrdElem{S, T}}) where {S, T} = is_domain_type(S)

@@ -32,11 +32,6 @@
 #
 ################################################################################
 
-export PrimeIdealsSet, prime_ideals_over, ramification_index,
-       prime_ideals_up_to, decomposition_group, inertia_subgroup,
-       ramification_group, is_ramified, is_tamely_ramified, is_weakly_ramified,
-       approximate
-
 @doc raw"""
     is_ramified(O::NfOrd, p::Int) -> Bool
 
@@ -1269,7 +1264,7 @@ function primary_decomposition(A::NfOrdIdl)
   for p = keys(lp)
     pp = prime_ideals_over(order(A), p)
     for x = pp
-      if !iscoprime(x, A)
+      if !is_coprime(x, A)
         #TODO: what is the correct exponent here?
         push!(P, (x^(div(degree(order(A)), flog(norm(x), p))*lp[p]) + A, x))
       end

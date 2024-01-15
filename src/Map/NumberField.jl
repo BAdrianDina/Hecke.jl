@@ -1,15 +1,9 @@
-export extend, NfToNfMor, automorphism_group
-
 struct NfMorSet{T}
   field::T
 end
 
 function elem_type(::Type{NfMorSet{T}}) where {T}
   return morphism_type(T, T)
-end
-
-function elem_type(::NfMorSet{T}) where {T}
-  return elem_type(NfMorSet{T})
 end
 
 function show(io::IO, S::NfMorSet{T}) where {T}

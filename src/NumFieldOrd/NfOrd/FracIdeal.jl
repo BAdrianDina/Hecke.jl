@@ -33,8 +33,6 @@
 #
 ################################################################################
 
-export fractional_ideal
-
 ################################################################################
 #
 #  Consistency
@@ -52,7 +50,7 @@ end
 ################################################################################
 
 function iszero(x::NfAbsOrdFracIdl)
-  return iszero(numerator(x))
+  return iszero(numerator(x, copy = false))
 end
 
 #################################################################################
@@ -174,17 +172,6 @@ end
 
 ################################################################################
 #
-#  String I/O
-#
-################################################################################
-
-export basis_matrix, norm, inv, ==, *, integral_split
-
-export parent, order, basis_matrix, basis_mat_inv, basis, norm,
-       ring_of_multipliers, ==
-
-################################################################################
-#
 #  Parent
 #
 ################################################################################
@@ -201,8 +188,6 @@ function Base.hash(a::NfAbsOrdFracIdl, h::UInt)
 end
 
 elem_type(::Type{NfAbsOrdFracIdlSet{S, T}}) where {S, T} = NfAbsOrdFracIdl{S, T}
-
-elem_type(::NfAbsOrdFracIdlSet{S, T}) where {S, T} = NfAbsOrdFracIdl{S, T}
 
 parent_type(::Type{NfAbsOrdFracIdl{S, T}}) where {S, T} = NfAbsOrdFracIdlSet{S, T}
 
@@ -234,12 +219,14 @@ order(a::NfAbsOrdFracIdl) = a.order
 
 Returns the inverse of the basis matrix of $I$.
 """
-function basis_mat_inv(a::NfAbsOrdFracIdl)
-  if isdefined(a, :basis_mat_inv)
+function basis_mat_inv(a::NfAbsOrdFracIdl; copy::Bool = true)
+  if !isdefined(a, :basis_mat_inv)
+    a.basis_mat_inv = inv(basis_matrix(a))
+  end
+  if copy
     return deepcopy(a.basis_mat_inv)
   else
-    a.basis_mat_inv = inv(basis_matrix(a))
-    return deepcopy(a.basis_mat_inv)
+    return a.basis_mat_inv
   end
 end
 
@@ -627,7 +614,7 @@ function +(A::NfAbsOrdIdl{S, T}, B::NfAbsOrdFracIdl{S, T}) where {S <: NumField,
     return fractional_ideal(order(A), A)
   end
   n1 = A*denominator(B)
-  n = n1 + numerator(B)
+  n = n1 + numerator(B, copy = false)
   return n//denominator(B)
 end
 
@@ -645,7 +632,7 @@ function +(A::NfAbsOrdFracIdl{S, T}, B::Hecke.NfAbsOrdFracIdl{S, T}) where {S <:
   d = lcm(denominator(A), denominator(B))
   ma = div(d, denominator(A))
   mb = div(d, denominator(B))
-  return (numerator(A)*ma + numerator(B)*mb)//d
+  return (numerator(A, copy = false)*ma + numerator(B, copy = false)*mb)//d
 end
 
 function *(x::T, y::NfAbsOrd{S, T}) where {S <: NumField, T <: NumFieldElem}
@@ -792,7 +779,7 @@ function in(x::nf_elem, y::NfOrdFracIdl)
   M = zero_matrix(FlintZZ, 1, degree(O))
   t = FakeFmpqMat(M)
   elem_to_mat_row!(t.num, 1, t.den, x)
-  v = t*basis_mat_inv(O)
+  v = t*basis_mat_inv(O, copy = false)
   v = v*B
 
   return v.den == 1
