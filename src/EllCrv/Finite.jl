@@ -466,9 +466,9 @@ end
 @doc raw"""
 	modular_polynomial_at_j_invariant(phi_l::Poly) -> Poly
 
-This algorithm is computing the value of the classical modular polynomial at the 
-point P = (x, j), where j is the j-invariant of an elliptic curve defined over Fq. 
-Function returns a polynomial in Fq[x]. 
+	This algorithm is computing the value of the classical modular polynomial at the 
+	point P = (x, j), where j is the j-invariant of an elliptic curve defined over Fq. 
+	Function returns a polynomial in Fq[x]. 
 """
 function modular_polynomial_at_j_invariant(phil, j)
 	#where T<: Integer
@@ -498,10 +498,10 @@ end
 @doc raw"""
 	partial_derivatives_classical_modular_polynomial(phi_l::Poly) -> Poly, Poly
 
-This algorithm is computing the partial derivatives of the classical modular 
-polynomial. 
+	This algorithm is computing the partial derivatives of the classical modular 
+	polynomial. 
 """
-function partial_derivative_classical_modular_polynomial(phil) 
+function partial_derivative_classical_modular_polynomial(phil::ZZMPolyRingElem)::(ZZMPolyRingElem, ZZMPolyRingElem) 
 	#where T<: Integer
 	# TODO: I am not sure yet, it PolyElem is the correct data type; this needs to be checked! 
 	
@@ -562,7 +562,9 @@ function partial_derivative_classical_modular_polynomial(phil)
 end
 
 @doc raw""" 
-TODO: write documentation
+	compute_cks_coeffs(d, cks)
+	Input: a positive integer d, and a list cks containing the values from (VII.21) for d <= 2
+	Output: the list cks containing elements ck, resp. ck_t, coputed recusively with (VII.22) in ECC.
 """
 function compute_cks_coeffs(d, cks)
 
@@ -581,34 +583,13 @@ function compute_cks_coeffs(d, cks)
 end
 
 
-@doc raw""" 
-TODO: write documentation
-"""
-function Cw(d, x, cks)
-	
-	if length(cks) < d
-		error("#cks < l. ")
-	end
-	
-	R = parent(cks[1])
-	f = sum( cks[k] * x^k for k in 1:d )
-	
-	# in order to construct the exp. function exp(f);
-	# TODO: clarify if we expand f till degree(f).
-	#RL, x = laurent_series_ring(R, degree(f)+1, "x")
-	RL, x = laurent_series_ring(R, degree(f)^2, "x")
-	
-	coeffs = collect(coefficients(f))
-	f_ = sum( coeffs[i+1] * x^(i) for i in 0:degree(f) )	
-	
-	return f_
-end 
+
 
 @doc raw""" 
 Returns the i-th. coefficient of f(x).
+
+not in use at the moment; instead we use the function exp_Aw_i2. 
 """
-# not in use at the moment; instead we use 
-# the function exp_Aw_i2. 
 function exp_Aw_i(Aw_d, i)
 	
 	# constant coefficient corresp. to entry 1 in coeffs.
@@ -625,10 +606,11 @@ function exp_Aw_i2(Aw_d, i)
 	return coeff(Aw_d, i)
 end
 
-# not in use at the moment; instead we use 
-# the function Cw_j2.
+
 @doc raw""" 
 Returns the i-th. coefficient of f(x).
+
+not in use at the moment; instead we use the function Cw_j2.
 """
 function Cw_j(Cw_d, j)
 	# constant coefficient corresp. to entry 1 in coeffs.
@@ -654,7 +636,10 @@ end
 
 
 @doc raw""" 
-TODO: write description
+	compute_Fli(d, Flds, Aw_d, Cw_d)
+	Input: positive integer d, list Flds containing the left-hand side of Formulae (VII.24) in ECC, 
+	and lists Aw_d, Cw_d of coefficients from the formulas (VII.23) and (VII.24) in ECC.
+	Output: list Flds containing for any 1 <= i <= d, the left-hand side of Formulae (VII.24) in ECC.
 """
 function compute_Fli(d, Flds, Aw_d, Cw_d)
 	
@@ -678,14 +663,14 @@ end
 @doc raw""" 
 	exp_Aw(d, x, p1, l, cks, cks_t)
 
-Input: positive integer d, variable x, finite field elements p1, l, and arrays cks, cks_t corresponding
-to coefficients ck, ck_tilde from formulae (VII.22) in ECC.
-Output: the right hand-side of formulae (VII.23) in ECC.  
+	Input: positive integer d, variable x, finite field elements p1, l, and arrays cks, cks_t corresponding
+	to coefficients ck, ck_tilde from formulae (VII.22) in ECC.
+	Output: the right hand-side of formulae (VII.23) in ECC.  
 """
 function exp_Aw(d, x, p1, l, cks, cks_t)
 	
 	"TODO: I need tom check if I indeed need to constuct these complicated Laurent-series, or
-	if I can solve my problem of constructing exp(f) in a much easier way!
+	if I can solve my problem of constructing exp(f) in a simpler way!
 	"
 	
 	if (length(cks) < d) || (length(cks_t) < d) || (length(cks) != length(cks_t))
@@ -707,6 +692,31 @@ function exp_Aw(d, x, p1, l, cks, cks_t)
 	
 	return f_lr_exp, f_lr 
 end
+
+@doc raw""" 
+	Cw(d, x, cks)
+	Input: positive integer d, variable x, and list cks of coefficints ck.
+	Output: 
+"""
+function Cw(d, x, cks)
+	
+	if length(cks) < d
+		error("#cks < l. ")
+	end
+	
+	R = parent(cks[1])
+	f = sum( cks[k] * x^k for k in 1:d )
+	
+	# in order to construct the exp. function exp(f);
+	# TODO: clarify if we expand f till degree(f).
+	#RL, x = laurent_series_ring(R, degree(f)+1, "x")
+	RL, x = laurent_series_ring(R, degree(f)^2, "x")
+	
+	coeffs = collect(coefficients(f))
+	f_ = sum( coeffs[i+1] * x^(i) for i in 0:degree(f) )	
+	
+	return f_
+end 
 
 @doc raw""" 
 TODO: write documentation
@@ -770,7 +780,7 @@ is based on the splitting type of the modular polynomial phi_l(x, j(E)) in ZZ[x,
 respectively in Fq[x].
 This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
-function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
+function isElkiesPrime(l::Int, E::EllCrv{T})::(Bool,Int) where T<:FinFieldElem
 	
     R = base_field(E)
     q = order(R)
@@ -846,7 +856,6 @@ end
 This algorithm is [Algorithm 7.3, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
 
-#function ElkiesProcedure(l::Int, E::EllCrv{T}, irred_facts_of_phil::Vector{Any}) where T<:FinFieldElem
 function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	
     R = base_field(E)
@@ -992,7 +1001,7 @@ end
 	
 This algorithm is [Algorithm VII.4, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
-function AtkinProcedure(l::Int, r::Int, E::EllCrv{T}) where T<:FinFieldElem
+function AtkinProcedure(l::Int, r::Int, E::EllCrv{T})::Set{Any} where T<:FinFieldElem 
 	###################################################################
 	#	Exammple:
 	#   F = GF(131)
@@ -1182,7 +1191,7 @@ Given an elliptic curve $E$ over a finite field $\mathbf F$,
 this function computes the order of $E(\mathbf F)$ using Schoof's algorithm
 The characteristic must not be $2$ or $3$.
 """
-function order_via_schoof(E::EllCrv{T}) where T<:FinFieldElem
+function order_via_schoof(E::EllCrv{T}) where T<:FinFieldElem 
   R = base_field(E)
   q = order(R)
   p = characteristic(R)
