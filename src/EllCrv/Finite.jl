@@ -452,13 +452,6 @@ end
 #   
 ################################################################################
 
-################################################################################
-#	Exammple:
-#   F = GF(131)
-#	E = EllipticCurve(F, [1,23])
-#  	phi_l = classical_modular_polynomial(5)	
-#	evaluete_classical_modular_polynomial_at_j_invariant(phi_l, j_invariant(E))
-################################################################################
 @doc raw"""
 	modular_polynomial_at_j_invariant(phi_l::Poly) -> Poly
 
@@ -466,12 +459,9 @@ end
 	point P = (x, j), where j is the j-invariant of an elliptic curve defined over Fq. 
 	Function returns a polynomial in Fq[x]. 
 """
-function modular_polynomial_at_j_invariant(phil, j)
-	#where T<: Integer
-	# TODO: I am not sure yet, it PolyElem is the correct data type; this needs to be checked! And to check which data type is phil.
-	# how do I define j to be of type field element?
-	# this function should be only for internal usage.
-	
+function modular_polynomial_at_j_invariant(phil::ZZMPolyRingElem, j::FinFieldElem)
+	# Adrian: this function should be only for internal usage.
+		
 	R = parent(j)
 	RR, (x, y) = polynomial_ring( R, ["x","y"] )
 	philFq = change_base_ring( RR, phil )
@@ -497,18 +487,7 @@ end
 	This algorithm is computing the partial derivatives of the classical modular 
 	polynomial. 
 """
-function partial_derivative_classical_modular_polynomial(phil::ZZMPolyRingElem)::(ZZMPolyRingElem, ZZMPolyRingElem) 
-	#where T<: Integer
-	# TODO: I am not sure yet, it PolyElem is the correct data type; this needs to be checked! 
-	
-	# TODO: We need some general checks before beginning:
-	
-	
-	################################################################################
-	#	Exammple:
-	#   @time phil = classical_modular_polynomial(5)
-	#	@time Hecke.partial_derivative_classical_modular_polynomial(phil)
-	############################################################################
+function partial_derivative_classical_modular_polynomial(phil::ZZMPolyRingElem) 
 	
 	R = parent(phil)
 	x = R[1]
@@ -562,7 +541,7 @@ end
 	Input: a positive integer d, and a list cks containing the values from (VII.21) for d <= 2
 	Output: the list cks containing elements ck, resp. ck_t, coputed recusively with (VII.22) in ECC.
 """
-function compute_cks_coeffs(d, cks)
+function compute_cks_coeffs(d::Int, cks::Vector{fpFieldElem})
 
 	if length(cks) >= d
 		return cks
@@ -657,13 +636,13 @@ end
 
 
 @doc raw""" 
-	exp_Aw(d, x, p1, l, cks, cks_t)
+	exp_Aw(d::Int, x::fpPolyRingElem, p1::fpFieldElem, l::Int, cks::Vector{fpFieldElem}, cks_t::Vector{fpFieldElem})
 
 	Input: positive integer d, variable x, finite field elements p1, l, and arrays cks, cks_t corresponding
 	to coefficients ck, ck_tilde from formulae (VII.22) in ECC.
 	Output: the right hand-side of formulae (VII.23) in ECC.  
 """
-function exp_Aw(d, x, p1, l, cks, cks_t)
+function exp_Aw(d::Int, x::fpPolyRingElem, p1::fpFieldElem, l::Int, cks::Vector{fpFieldElem}, cks_t::Vector{fpFieldElem})
 	
 	"TODO: I need tom check if I indeed need to constuct these complicated Laurent-series, or
 	if I can solve my problem of constructing exp(f) in a simpler way!
@@ -717,7 +696,7 @@ end
 @doc raw""" 
 TODO: write documentation
 """
-function compute_Fl(E, d, l, p1, cks, cks_t)
+function compute_Fl(E::EllCrv{T}, d::Int, l::Int, p1::FinFieldElem, cks::Vector{fpFieldElem}, cks_t::Vector{fpFieldElem}) where T<:FinFieldElem 
 	# test example
 	# F = GF(131)
 	# E = EllipticCurve(F, [1,23])
@@ -768,6 +747,22 @@ function compute_Fl(E, d, l, p1, cks, cks_t)
 	return true, Fl
 end
 
+
+# TODO: implement without quotient ring
+@doc raw"""
+	FindEigenvalueModl(Flx, E) -> Integers
+This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
+"""
+function FindEigenvalueModl(Flx, E)
+	R = base_field(E)
+	Rxy, (x, y) = polynomial_ring(R, ["x", "y"]) 
+	
+    #Lx, X = polynomial_ring(L, "X")
+    #Lxy, Y = polynomial_ring(Lx, "Y")
+	
+	return 1
+end
+
 @doc raw"""
 	isElkiesPrime(l::Integers) -> Integers
 
@@ -776,7 +771,7 @@ is based on the splitting type of the modular polynomial phi_l(x, j(E)) in ZZ[x,
 respectively in Fq[x].
 This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
-function isElkiesPrime(l::Int, E::EllCrv{T})::(Bool,Int) where T<:FinFieldElem
+function isElkiesPrime(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 	
     R = base_field(E)
     q = order(R)
@@ -997,7 +992,7 @@ end
 	
 This algorithm is [Algorithm VII.4, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
-function AtkinProcedure(l::Int, r::Int, E::EllCrv{T})::Set{Any} where T<:FinFieldElem 
+function AtkinProcedure(l::Int, r::Int, E::EllCrv{T}) where T<:FinFieldElem 
 	###################################################################
 	#	Exammple:
 	#   F = GF(131)
@@ -1054,26 +1049,6 @@ function AtkinProcedure(l::Int, r::Int, E::EllCrv{T})::Set{Any} where T<:FinFiel
 	return Tl
 end
 
-
-
-
-
-
-
-# TODO: implement without quotient ring
-@doc raw"""
-	FindEigenvalueModl(Flx, E) -> Integers
-This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
-"""
-function FindEigenvalueModl(Flx, E)
-	R = base_field(E)
-	Rxy, (x, y) = polynomial_ring(R, ["x", "y"]) 
-	
-    #Lx, X = polynomial_ring(L, "X")
-    #Lxy, Y = polynomial_ring(Lx, "Y")
-	
-	return 1
-end
 
 ################################################################################
 #
