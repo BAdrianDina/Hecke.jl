@@ -961,29 +961,47 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 		C = R(l*R(3)^(-1)*(E6q_modp * E4q_modp^(-1) - l*E6ql_modp * E4ql_modp^(-1)))
 		p1 = R( A + B + C )
 	 
-		cks = compute_cks_coeffs( d, [ R( - a_4 * R(5)^(-1) ), R( - a_6 * R(7)^(-1) ) ] )
-		cks_t = compute_cks_coeffs(d, [R( - a_tilde * l^4 * R(5)^(-1) ), R( - b_tilde * l^6 * R(7)^(-1) )] )
-		
-		######### I am working hwere at the moment ############################.
-		# TODO: I am here in the code, 25.11.23
-		test, Fl = compute_Fl(E, d, l, p1, cks, cks_t)
-		######### I am working hwere at the moment ############################.
-		
-		
-	
-		
-		
-		#TODO: There is an error inside; it happens for l = 2.
-		if gcd(F_l, f_l) != 1
-			# we need only one factor of f_l(x), namely one F_l(x)
-			if degree(F_l) == floor(Int, ((l-1)//2))
-				return F_l
-			else
-				error("error: degree(F_l) = ", degree(F_l), " and not ", floor(Int, (l-1)/2))
-			end
+	 
+		# Remark: maybe we can do it better! 
+		if d == 1
+			cks = [ R( - a_4 * R(5)^(-1) ) ]
+			cks_t = [ R( - a_tilde * l^4 * R(5)^(-1) ) ]
+		elseif d == 2
+			cks = [ R( - a_4 * R(5)^(-1) ), R( - a_6 * R(7)^(-1) ) ]
+			cks_t = [ R( - a_tilde * l^4 * R(5)^(-1) ), R( - b_tilde * l^6 * R(7)^(-1) )]
 		else
-			error("error: gcd(F_l, f_l) = ", gcd(F_l, f_l))
+			cks = compute_cks_coeffs( d, [ R( - a_4 * R(5)^(-1) ), R( - a_6 * R(7)^(-1) ) ] )
+			cks_t = compute_cks_coeffs(d, [ R( - a_tilde * l^4 * R(5)^(-1) ), R( - b_tilde * l^6 * R(7)^(-1) )] )
 		end
+		
+		# Remark: also here maybe we can do it better!
+		if d == 1
+			Fl = - p1*R(2)^-1 + x
+		elseif d == 2
+			c1 = cks[1]
+			c1_t = cks_t[1]			
+			Fl = ( R(p1^2)*R(8)^-1 - R(c1_t - l*c1)*R(12)^-1 - R(l - 1)*R(2)^-1*c1) + (- p1*R(2)^-1) * x + x^2
+		else
+			#I am working hwere at the moment #.
+			# TODO: I am here in the code, 25.11.23
+			test, Fl = compute_Fl(E, d, l, p1, cks, cks_t)
+			#I am working hwere at the moment #.
+		end
+		
+		# some tests
+		if degree(Fl) != floor(Int, ((l-1)//2))
+			error("error: degree(F_l) = ", degree(F_l), " and not ", floor(Int, (l-1)/2))
+		end
+		
+		# more tests
+		f_ls = division_polynomial_univariate(E, l)
+		fl = f_ls[1]
+		print("fl: ", fl)
+		if gcd(Fl, fl) != Fl
+			error("error: gcd(F_l, fl) = ", gcd(F_l, fl))
+		end
+			
+		return Fl
 	end	
 end
 
