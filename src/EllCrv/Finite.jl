@@ -747,18 +747,94 @@ function compute_Fl(E::EllCrv{T}, d::Int, l::Int, p1::FinFieldElem, cks::Vector{
 	return true, Fl
 end
 
+@doc raw""" 
+TODO: write documentation
+"""
+function ReduceModFlE(f::fpPolyRingElem, Fl::fpPolyRingElem, E::EllCrv{T}) where T<:FinFieldElem
+	
+	R = base_field(E)
+	p = characteristic(R)
+	#Rx, x = PolynomialRing(R, "x")
+	#Rxy, y = PolynomialRing(Rx, "y")
+	Rxy, (x, y) = PolynomialRing(R, ["x", "y"])
+	
+	# To Do: take here a more general equation if needed; 
+	_, _, _, a4, a6 = a_invars(E)
+	E_eq = y^2 - (x^3 + a4*x + a6)
+	
+	
+	# manipulate Fl:
+	coeffs_Fl = collect(coefficients(Fl))
+	expons_Fl = collect(exponent_vectors(Fl))
+	expons_Fl = [ t[1] for t in expons_Fl ]
+	Fl_xy = sum( [ coeffs_Fl[i]*x^(expons_Fl[i]) for i in length(coeffs_Fl):-1:1 ] )
+	
+	#quotient ting Q = R[x, y]/(Fl);
+	Q = ResidueRing(Rxy, Fl_xy)
+	fQ = Q(f)
+	
+	# lift fq to R[x, y] in order to reduce it mod E;
+	fl = lift(fQ)
+	
+	fl_data = fl.data
+	fl_data_coeffs = collect(coefficients(fl_data))
+	fl_data_exps = collect(exponent_vectors(fl_data))
+	
+	f_mod_FlE = Rxy(0)
+	for i = 1:length(fl_data_exps)
+		exps = fl_data_exps[i]
+		ex = exps[1]
+		ey = exps[2]
+		ai = fl_data_coeffs[i]
+		if ey >= 2 
+			# !!! TODO: error in conversion of the data !!!!
+			u = ai * x^ex * y^(Rxy(ey%2)) * Rxy(( x^3 + a4*x + a6 )^(Rxy(Int(floor(ey/2)))))
+		else
+			u = ai * x^ex * y^ey
+		end
+		f_mod_FlE += u
+	end
+	
+	return 1
+end
 
-# TODO: implement without quotient ring
 @doc raw"""
 	FindEigenvalueModl(Flx, E) -> Integers
 This algorithm is based on [Proposition 7.2, Elliptic Curves in Cryptography, Blake-Seroussi-Smart]. 
 """
-function FindEigenvalueModl(Flx, E)
-	R = base_field(E)
-	Rxy, (x, y) = polynomial_ring(R, ["x", "y"]) 
+function FindEigenvalueModl(E::EllCrv{T}, Flx::FqPolyRingElem, l::Int) where T<:FinFieldElem
+	# TODO: continue here with another approach instead of defining a 
+	# quotient ring RR = Fq[x, y]/(E, Flx):
+	# this is the bottleneck of the computation.
 	
-    #Lx, X = polynomial_ring(L, "X")
-    #Lxy, Y = polynomial_ring(Lx, "Y")
+	R = base_field(E)
+	#Rx, x = PolynomialRing(R, "x")
+	p = characteristic(R)
+	
+	Rxy, (x, y) = PolynomialRing(R, ["x", "y"]);
+	Frob = x^p - x
+	#Rxy, y = PolynomialRing(Rx, "y")
+	
+	# create common universe:
+	#Frob = Rxy(Frob)
+	#Flx = Rxy(Flx)
+	
+    for lambda = 1:l-1
+		psi_lm = Rxy( division_polynomial(E, lambda-1, x, y) )
+		psi_l = Rxy( division_polynomial(E, lambda, x, y) )
+		psi_lp = Rxy( division_polynomial(E, lambda+1, x, y) )
+		
+		
+		f_prefix = Frob * psi_l^2
+		print(typeof(f_prefix))
+		f_prefix_red = ReduceModFlE(f_prefix, Flx, E)
+		
+		f_post = psi_l * psi_lp 
+		f_post_red = ReduceModFlE(f_post, Flx, E)
+		
+		h_xy = f_prefix_red + f_post_red
+		h_xy_red = ReduceModFlE(h_xy, Flx, E)
+	end
 	
 	return 1
 end
@@ -982,10 +1058,8 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 			c1_t = cks_t[1]			
 			Fl = ( R(p1^2)*R(8)^-1 - R(c1_t - l*c1)*R(12)^-1 - R(l - 1)*R(2)^-1*c1) + (- p1*R(2)^-1) * x + x^2
 		else
-			#I am working hwere at the moment #.
-			# TODO: I am here in the code, 25.11.23
+			# TODO: I am here in the code, 27.01.24
 			test, Fl = compute_Fl(E, d, l, p1, cks, cks_t)
-			#I am working hwere at the moment #.
 		end
 		
 		# some tests
@@ -996,7 +1070,6 @@ function ElkiesProcedure(l::Int, E::EllCrv{T}) where T<:FinFieldElem
 		# more tests
 		f_ls = division_polynomial_univariate(E, l)
 		fl = f_ls[1]
-		print("fl: ", fl)
 		if gcd(Fl, fl) != Fl
 			error("error: gcd(F_l, fl) = ", gcd(F_l, fl))
 		end
@@ -1127,12 +1200,8 @@ function order_via_SEA(E::EllCrv{T}) where T<:FinFieldElem
 		
 		if test == true
 			Flx = ElkiesProcedure(l, E)	
-			
-			# TODO: continue here with another approcah instead of defining a 
-			# quotient ring RR = Fq[x, y]/(E, Flx):
-			# this is the bottleneck of the computation.
-			
-			#lambda = FindEigenvalueModl(Flx, E)
+		
+			lambda = FindEigenvalueModl(E, Flx, l)
 			lambda = 1
 			
 			# compute the inverse of lambda mod l:
@@ -1235,7 +1304,6 @@ function fn_from_schoof(E::EllCrv, n::Int, x)
     end
 
   return(poly)
-
 end
 
 
@@ -1257,8 +1325,6 @@ function fn_from_schoof2(E::EllCrv, n::Int, x)
   else
     return replace_all_squares(divexact(f, y), g)
   end
-
-
 end
 
 #prime_set(M::Nemo.ZZRingElem, char::Nemo.ZZRingElem) -> Array{Nemo.ZZRingElem}
@@ -1782,7 +1848,7 @@ function supersingular_polynomial(p::IntegerUnion)
 
   m = divexact((_p -1 ), 2)
   KXT, (X, T) = polynomial_ring(K, ["X", "T"], cached = false)
-  H = sum(elem_type(KXT)[binomial(m, i)^2 *T^i for i in 0:m])
+  H = sum(elem_type(KXT)[binomial(m, i)^2 * T^i for i in 0:m])
   F = T^2 * (T - 1)^2 * X - 256 * (T^2 - T + 1)^3
   R = resultant(F, H, 2)
   factors = factor(evaluate(R, [J, zero(KJ)]))
